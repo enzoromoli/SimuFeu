@@ -1,0 +1,6 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('engine', {
+  send: (msg) => ipcRenderer.send('engine:send', msg),
+  onMessage: (callback) => ipcRenderer.on('engine:message', (_event, msg) => callback(msg)),
+});

@@ -1,47 +1,46 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
+const { Worker } = require('worker_threads');
 const path = require('path');
-const { spawn } = require('child_process');
 
 let mainWindow;
-let backendProcess;
-
-function startBackend() {
-  const backendPath = path.join(__dirname, '../backend/src/index.js');
-  backendProcess = spawn('node', [backendPath], { stdio: 'inherit' });
-  backendProcess.on('error', (err) => console.error('Backend error:', err));
-}
+let engineWorker;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
-    height: 800,
+    height: 720,
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
-  // En production, charge le build Vite; en dev, charge le serveur Vite
-  const isDev = !app.isPackaged;
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../frontend/dist/index.html'));
-  }
-
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.loadFile(path.join(__dirname, '../src/index.html'));
 }
 
+function startEngineWorker() {
+  engineWorker = new Worker(path.join(__dirname, '../engine/worker.js'));
+
+  engineWorker.on('message', (msg) => {
+    if (mainWindow) mainWindow.webContents.send('engine:message', msg);
+  });
+
+  engineWorker.on('error', (err) => console.error('[engine] error:', err));
+  engineWorker.on('exit', (code) => console.log('[engine] exited with code', code));
+}
+
+// UI → engine
+ipcMain.on('engine:send', (_event, msg) => {
+  if (engineWorker) engineWorker.postMessage(msg);
+});
+
 app.whenReady().then(() => {
-  startBackend();
   createWindow();
+  startEngineWorker();
 });
 
 app.on('window-all-closed', () => {
-  if (backendProcess) backendProcess.kill();
+  if (engineWorker) engineWorker.terminate();
   if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (mainWindow === null) createWindow();
 });

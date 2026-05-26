@@ -1,0 +1,6 @@
+{
+  "name": "simufeu-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Engine worker — runs in a Node.js Worker Thread"
+}
