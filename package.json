@@ -4,9 +4,13 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "dev": "electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win --x64"
+    "build:engine": "tsc --project engine/tsconfig.json",
+    "watch:engine": "tsc --project engine/tsconfig.json --watch",
+    "dev": "npm run build:engine && electron .",
+    "build": "npm run build:engine && electron-builder",
+    "build:win": "npm run build:engine && electron-builder --win --x64",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "build": {
     "appId": "com.simufeu.app",
@@ -21,11 +25,16 @@
     "files": [
       "electron/**/*",
       "src/**/*",
-      "engine/**/*"
+      "engine/**/*.js",
+      "engine/package.json"
     ]
   },
   "devDependencies": {
+    "@types/node": "^22.20.0",
+    "chokidar": "^5.0.0",
     "electron": "^35.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
   }
 }
