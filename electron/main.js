@@ -38,9 +38,33 @@ ipcMain.on('engine:send', (_event, msg) => {
 app.whenReady().then(() => {
   createWindow();
   startEngineWorker();
+  if (!app.isPackaged) enableHotReload();
 });
 
 app.on('window-all-closed', () => {
   if (engineWorker) engineWorker.terminate();
   if (process.platform !== 'darwin') app.quit();
 });
+
+function enableHotReload() {
+  const chokidar = require('chokidar');
+
+  // src/ → recharge la fenêtre
+  chokidar.watch(path.join(__dirname, '../src'), { ignoreInitial: true })
+    .on('change', () => {
+      if (mainWindow) mainWindow.webContents.reload();
+    });
+
+  // engine/ → redémarre le worker
+  chokidar.watch(path.join(__dirname, '../engine'), { ignoreInitial: true })
+    .on('change', () => {
+      if (engineWorker) engineWorker.terminate().then(startEngineWorker);
+    });
+
+  // electron/ → relance le process entier
+  chokidar.watch(__dirname, { ignoreInitial: true })
+    .on('change', () => {
+      app.relaunch();
+      app.exit(0);
+    });
+}
