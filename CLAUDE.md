@@ -45,10 +45,11 @@ Une **branche git par fonctionnalité**.
 
 ## Conventions cibles
 
-> Migration vers TypeScript strict **prévue** (le code est en JS pour l'instant — ne pas
-> migrer maintenant). Ces conventions s'appliquent au code à venir.
+> Migration vers TypeScript strict **en cours**, au fur et à mesure. Tout nouveau code est
+> écrit en TS strict. Quand on touche un fichier `.js` existant, on le migre en `.ts` dans
+> la foulée (pas de big-bang : on convertit progressivement, fichier par fichier).
 
-- **TypeScript strict** une fois la migration faite.
+- **TypeScript strict** pour tout nouveau code ; les fichiers JS touchés sont migrés en TS.
 - **Moteur = fonctions pures** : signature `(état, params) -> nouvel état`, sans mutation
   ni effet de bord.
 - **Aléatoire TOUJOURS via une graine injectée** — jamais `Math.random` directement
