@@ -22,6 +22,7 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 | 2026-06-25 | Conversion bbox -> ordre Overpass (sud,ouest,nord,est) faite dans le client | Détail d'API non exposé à l'appelant                                    | Prise  |
 | 2026-06-25 | **osmtogeojson** retenu pour normaliser Overpass -> GeoJSON               | Lib éprouvée vs réécriture maison ; v3 fournit ses propres types          | Prise  |
 | 2026-06-25 | **Copie locale** de `TerrainType` + `osmTags` (`src/domain/types.ts`)     | `simu-engine` non mergée -> interdiction d'importer `engine/` ; **à resynchroniser au merge** | Prise  |
+| 2026-06-25 | **Resync effectué** : `src/domain/types.ts` ré-exporte `TerrainType` et dérive `OSM_TAGS` depuis `engine/` (fin de la copie locale) | `simu-engine` mergée dans `dev` -> source unique de vérité ; on n'importe que des données pures (types + config), pas la logique de simulation | Prise  |
 | 2026-06-25 | Feature OSM sans tag reconnu : **ignorée** par le classifieur             | Choix initial simple, **réversible** (pourra devenir un type « inconnu »)  | Prise  |
 | 2026-06-25 | Cache derrière une **interface** `OsmCache` (get/set), impl. fichiers (`fs`) | `fs` pour scripts/tests Node ; impl. IndexedDB plus tard côté renderer (pas d'accès `fs`) | Prise  |
 | 2026-06-25 | Script de démo exécuté via **tsx** (`npm run ingest:demo`)                | Lance le `.ts` sans étape de build                                        | Prise  |
