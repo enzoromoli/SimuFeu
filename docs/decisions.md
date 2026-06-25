@@ -15,6 +15,17 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 | 2026-06-15 | Moteur de simulation isolé dans un Worker Thread (`engine/worker.js`)     | Séparer la logique de calcul de l'UI, ne pas bloquer le thread du renderer | Prise  |
 | 2026-06-15 | Communication UI <-> moteur via IPC Electron + `contextBridge` (preload)  | Pont sûr entre renderer et main, qui relaie ensuite vers le worker        | Prise  |
 | 2026-06-15 | `contextIsolation: true` / `nodeIntegration: false`                      | Bonne pratique de sécurité Electron : isoler le renderer de Node          | Prise  |
+| 2026-06-25 | Nouveau code applicatif en **TypeScript** (feature ingestion OSM)         | L'engine est déjà en TS ; on n'écrit plus de JS neuf (migration de l'existant toujours À trancher) | Prise  |
+| 2026-06-25 | Outillage TS + Vitest mis en place sur `dev` (tsconfig, vitest.config.mts) | Absents de `dev` (présents sur `simu-engine` non mergée) ; nécessaires pour la feature, sans casser Electron | Prise  |
+| 2026-06-25 | Bbox passée en objet nommé `Bounds {south,west,north,east}`               | Évite les bugs d'ordre positionnel des coordonnées                        | Prise  |
+| 2026-06-25 | Overpass : **une seule** requête (union de tous les tags), endpoint configurable par `OVERPASS_ENDPOINT` | Limiter la charge réseau ; pouvoir basculer sur un miroir            | Prise  |
+| 2026-06-25 | Conversion bbox -> ordre Overpass (sud,ouest,nord,est) faite dans le client | Détail d'API non exposé à l'appelant                                    | Prise  |
+| 2026-06-25 | **osmtogeojson** retenu pour normaliser Overpass -> GeoJSON               | Lib éprouvée vs réécriture maison ; v3 fournit ses propres types          | Prise  |
+| 2026-06-25 | **Copie locale** de `TerrainType` + `osmTags` (`src/domain/types.ts`)     | `simu-engine` non mergée -> interdiction d'importer `engine/` ; **à resynchroniser au merge** | Prise  |
+| 2026-06-25 | **Resync effectué** : `src/domain/types.ts` ré-exporte `TerrainType` et dérive `OSM_TAGS` depuis `engine/` (fin de la copie locale) | `simu-engine` mergée dans `dev` -> source unique de vérité ; on n'importe que des données pures (types + config), pas la logique de simulation | Prise  |
+| 2026-06-25 | Feature OSM sans tag reconnu : **ignorée** par le classifieur             | Choix initial simple, **réversible** (pourra devenir un type « inconnu »)  | Prise  |
+| 2026-06-25 | Cache derrière une **interface** `OsmCache` (get/set), impl. fichiers (`fs`) | `fs` pour scripts/tests Node ; impl. IndexedDB plus tard côté renderer (pas d'accès `fs`) | Prise  |
+| 2026-06-25 | Script de démo exécuté via **tsx** (`npm run ingest:demo`)                | Lance le `.ts` sans étape de build                                        | Prise  |
 
 ## À trancher
 
@@ -23,4 +34,5 @@ qu'elle est arrêtée, puis la déplacer vers le tableau ci-dessus).
 
 - **Coordonnées de la grille hexagonale** : offset ou axiales ?
 - **Durée de combustion** : combien de ticks avant qu'une cellule en feu passe à « brûlée » ?
-- **Migration JS → TypeScript** : quand et comment migrer le code existant vers TS strict ?
+- **Migration JS → TypeScript** : le **nouveau** code est désormais en TS (décision 2026-06-25) ;
+  reste à trancher *quand/comment* migrer le code **existant** (`electron/`, `src/renderer.js`) vers TS strict.

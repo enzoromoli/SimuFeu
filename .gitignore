@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 .env.local
+.cache/
 
 # Artefacts de compilation TypeScript
 engine/*.js
