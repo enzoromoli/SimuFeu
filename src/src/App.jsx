@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import ThemeToggle from './components/ThemeToggle.jsx';
 import MapPanel from './components/MapPanel.jsx';
 import ParametersPanel from './components/ParametersPanel.jsx';
-import Modal from './components/Modal.jsx';
+import SimulationView from './components/SimulationView.jsx';
 import './App.css';
 
 const THEME_STORAGE_KEY = 'simufeu-theme';
@@ -38,7 +38,7 @@ export default function App() {
   const [zone, setZone] = useState(null);
   const [mapLayer, setMapLayer] = useState('plan');
   const [theme, setTheme] = useState(getInitialTheme);
-  const [showDevModal, setShowDevModal] = useState(false);
+  const [view, setView] = useState('setup');
   const [nameError, setNameError] = useState(false);
   const [nameErrorKey, setNameErrorKey] = useState(0);
   const [debugMode, setDebugMode] = useState(false);
@@ -73,12 +73,17 @@ export default function App() {
       return;
     }
     setNameError(false);
-    window.engine?.send({
-      type: 'simulation:create',
-      payload: { ...params, zone },
-    });
-    setShowDevModal(true);
+    window.engine?.send({ type: 'simulation:create', payload: { ...params, zone } });
+    setView('simulation');
   };
+
+  if (view === 'simulation') {
+    return (
+      <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}`}>
+        <SimulationView zone={zone} params={params} onExit={() => setView('setup')} />
+      </div>
+    );
+  }
 
   return (
     <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}`}>
@@ -132,13 +137,6 @@ export default function App() {
         </footer>
       </main>
 
-      <Modal
-        open={showDevModal}
-        title="Simulation"
-        onClose={() => setShowDevModal(false)}
-      >
-        Cette fonctionnalité est en cours de développement.
-      </Modal>
     </div>
   );
 }
