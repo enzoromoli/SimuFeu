@@ -25,7 +25,7 @@ export function computeIgnitionProb(cell: Cell, neighbors: Cell[]): number {
   )
 }
 
-export function step(state: SimState): SimState {
+export function step(state: SimState, rng: () => number): SimState {
   const { cells, tick } = state
   const newCells = new Map<string, Cell>()
 
@@ -53,7 +53,7 @@ export function step(state: SimState): SimState {
       continue
     }
 
-    if (Math.random() < computeIgnitionProb(cell, neighbors)) {
+    if (rng() < computeIgnitionProb(cell, neighbors)) {
       newCells.set(id, { ...cell, state: CellState.ON_FIRE, fireTick: tick, ignitionPressure: 0 })
     } else {
       newCells.set(id, { ...cell, ignitionPressure: cell.ignitionPressure + 1 })
