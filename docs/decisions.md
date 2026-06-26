@@ -10,6 +10,12 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 
 | Date       | Décision                                                                 | Pourquoi                                                                 | Statut |
 |------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|--------|
+| 2026-06-26 | Génération des ticks lazy (à la demande)                                  | Meilleure réactivité au démarrage ; aligné avec la règle spec « avancer au-delà du dernier tick déclenche le calcul » | Prise  |
+| 2026-06-26 | Stockage de l'historique en snapshots complets (SimState[])               | Accès O(1) à n'importe quel tick, implémentation simple ; la mémoire (~9 Mo pour 200 ticks / rayon 12) est acceptable pour une appli desktop | Prise  |
+| 2026-06-26 | Structure de l'historique : Array indexé par tick                         | Les ticks sont des entiers séquentiels 0..N ; `history[t]` est l'accès naturel, troncature = `splice(t+1)` | Prise  |
+| 2026-06-26 | Seed dérivée par tick : `seed_t = derive(globalSeed, t)`                  | Permet de régénérer les ticks > t après modification de la map SANS rejouer depuis 0 ; garantit la reproductibilité partielle | Prise  |
+| 2026-06-26 | PRNG : mulberry32 (32 bits, pur JS)                                       | Qualité suffisante pour la sim, aucune dépendance externe, déterministe et rapide | Prise  |
+| 2026-06-26 | `step(state, rng)` — RNG injecté plutôt que `Math.random()`              | Rend la fonction pure et testable sans mock ; découple le moteur du PRNG global | Prise  |
 | 2026-06-15 | Electron comme conteneur de l'application de bureau                       | Livrable `.exe` multi-OS, UI web réutilisable, accès Node pour le moteur  | Prise  |
 | 2026-06-15 | electron-builder, cible NSIS Windows (`build:win`)                        | Produire l'installeur `.exe` attendu comme livrable                       | Prise  |
 | 2026-06-15 | Moteur de simulation isolé dans un Worker Thread (`engine/worker.js`)     | Séparer la logique de calcul de l'UI, ne pas bloquer le thread du renderer | Prise  |

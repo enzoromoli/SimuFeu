@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { computeIgnitionProb, step, placeInitialFire, paintTerrain } from '../simEngine'
 import { CellState, TerrainType, Cell, SimState } from '../types'
 import { TERRAIN_CONFIG } from '../terrainConfig'
@@ -92,11 +92,11 @@ describe('computeIgnitionProb', () => {
 
 describe('step', () => {
   it('incrémente le tick de 1', () => {
-    expect(step(makeState()).tick).toBe(1)
+    expect(step(makeState(), () => 0).tick).toBe(1)
   })
 
   it('conserve la phase', () => {
-    expect(step({ ...makeState(), phase: 'running' }).phase).toBe('running')
+    expect(step({ ...makeState(), phase: 'running' }, () => 0).phase).toBe('running')
   })
 
   it('une cellule ON_FIRE devient BURNED après burnDuration ticks', () => {
@@ -109,36 +109,34 @@ describe('step', () => {
     // Avec burnDuration=2 et fireTick=0, la cellule reste en feu pour tick=0 et tick=1
     const burnDuration = TERRAIN_CONFIG[TerrainType.GRASSLAND].burnDuration
     for (let i = 0; i < burnDuration; i++) {
-      state = step(state)
+      state = step(state, () => 1) // rng=1 bloque l'ignition des voisins
       expect(state.cells.get('0,0,0')!.state).toBe(CellState.ON_FIRE)
     }
 
     // Au tick burnDuration (tick=2), la condition 2>=0+2 est vraie → BURNED
-    state = step(state)
+    state = step(state, () => 1)
     expect(state.cells.get('0,0,0')!.state).toBe(CellState.BURNED)
   })
 
   it('les cellules BURNED restent BURNED', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, state: CellState.BURNED })
-    const result = step({ cells: grid, tick: 0, phase: 'running' })
+    const result = step({ cells: grid, tick: 0, phase: 'running' }, () => 0)
     expect(result.cells.get('0,0,0')!.state).toBe(CellState.BURNED)
   })
 
   it('une cellule INTACT sans voisin en feu remet ignitionPressure à 0', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, ignitionPressure: 5 })
-    const result = step({ cells: grid, tick: 0, phase: 'running' })
+    const result = step({ cells: grid, tick: 0, phase: 'running' }, () => 0)
     expect(result.cells.get('0,0,0')!.ignitionPressure).toBe(0)
   })
 
   it('une cellule non-enflammée avec voisin en feu incrémente ignitionPressure', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(1) // bloque toute ignition
     let state = placeInitialFire('0,0,0', makeState(2))
-    state = step(state)
+    state = step(state, () => 1) // rng=1 bloque toute ignition
     const pressure = state.cells.get('1,0,-1')!.ignitionPressure
     expect(pressure).toBeGreaterThan(0)
-    vi.restoreAllMocks()
   })
 })
 
