@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { Worker } = require('worker_threads');
+const fs = require('fs');
 const path = require('path');
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -42,6 +43,24 @@ ipcMain.on('engine:send', (_event, msg) => {
   if (engineWorker) engineWorker.postMessage(msg);
 });
 
+// Map screenshot: capture then open native save dialog
+ipcMain.handle('capture:map', async (_event, { rect, defaultName }) => {
+  const img = await mainWindow.webContents.capturePage(rect);
+  const pngBuffer = img.toPNG();
+
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Enregistrer la zone',
+    defaultPath: `${defaultName || 'zone'}.png`,
+    filters: [{ name: 'Image PNG', extensions: ['png'] }],
+  });
+
+  if (!canceled && filePath) {
+    fs.writeFileSync(filePath, pngBuffer);
+    return { ok: true, filePath };
+  }
+  return { ok: false };
+});
+
 app.whenReady().then(() => {
   createWindow();
   startEngineWorker();
@@ -51,3 +70,4 @@ app.on('window-all-closed', () => {
   if (engineWorker) engineWorker.terminate();
   if (process.platform !== 'darwin') app.quit();
 });
+
