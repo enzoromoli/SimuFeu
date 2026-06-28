@@ -1,0 +1,95 @@
+.compass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 150px;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.compass:active {
+  cursor: grabbing;
+}
+
+.compass:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+.compass-dial {
+  width: 100%;
+  user-select: none;
+}
+
+.compass-ring {
+  fill: var(--ring-fill);
+  stroke: var(--border);
+  stroke-width: 2;
+}
+
+.compass-ring-inner {
+  fill: none;
+  stroke: var(--ring-line);
+  stroke-width: 1;
+}
+
+.compass-tick {
+  stroke: var(--tick);
+  stroke-width: 1.5;
+}
+
+.compass-tick--major {
+  stroke: var(--tick-major);
+  stroke-width: 2.5;
+}
+
+.compass-label {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+
+.compass-needle {
+  transition: transform 0.08s linear;
+}
+
+.compass-needle__line {
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.compass-needle__head {
+  fill: var(--accent);
+}
+
+.compass-needle__hub {
+  fill: var(--text);
+}
+
+.compass-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.compass-readout strong {
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.compass-readout span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.compass--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
