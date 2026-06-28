@@ -43,6 +43,7 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 | 2026-06-28 | Pas de `React.StrictMode` sur l'app | Le double-montage des effets en dev rejouait l'init impérative Leaflet + les abonnements IPC (`window.engine`, sans désabonnement) → doublons/races | Prise  |
 | 2026-06-28 | Vite : préférer les sources `.ts` aux `.js` du moteur (`resolve.extensions`) | `engine/*.js` (CommonJS, pour le worker Node) cassait l'analyse ESM de Rollup ; le renderer consomme les sources `.ts` | Prise  |
 | 2026-06-28 | UI convertie en **TypeScript** (`src/ui/*.tsx`) ; `tsconfig` UI dédié (lib DOM, jsx react), `typecheck` = root + UI | Lot 3 : tout le code applicatif neuf est typé ; `electron/` reste en JS (frontière) → migration JS→TS close | Prise  |
+| 2026-06-28 | **Double ingestion OSM conservée — on NE converge PAS.** L'UI garde son propre fetch Overpass pour le raster (`src/ui/lib/terrainRaster.ts`) ; la couche `src/app/services` (GeoJSON classé) reste **Node-only** et non câblée au renderer | Les deux ne sont pas redondantes (raster d'affichage vs GeoJSON classifié pour scripts/tests) ; le cache `fs` de `src/app/services` est **inaccessible au renderer** (`contextIsolation`) ; converger = nouvelle feature (cache IndexedDB + changement de rendu) à risque pour un gain surtout cosmétique → statu quo assumé | Prise  |
 
 ## À trancher
 
