@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
-import App from './App.jsx'
+import App from './App'
 
 describe('App (écran de configuration)', () => {
   it('monte et affiche la marque', () => {

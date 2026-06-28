@@ -42,6 +42,7 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 | 2026-06-28 | Message worker **`loadTerrain { cells }`** + helper pur `loadTerrains` | Remplir le terrain de toute la grille en un message au lieu de centaines de `paint` | Prise  |
 | 2026-06-28 | Pas de `React.StrictMode` sur l'app | Le double-montage des effets en dev rejouait l'init impérative Leaflet + les abonnements IPC (`window.engine`, sans désabonnement) → doublons/races | Prise  |
 | 2026-06-28 | Vite : préférer les sources `.ts` aux `.js` du moteur (`resolve.extensions`) | `engine/*.js` (CommonJS, pour le worker Node) cassait l'analyse ESM de Rollup ; le renderer consomme les sources `.ts` | Prise  |
+| 2026-06-28 | UI convertie en **TypeScript** (`src/ui/*.tsx`) ; `tsconfig` UI dédié (lib DOM, jsx react), `typecheck` = root + UI | Lot 3 : tout le code applicatif neuf est typé ; `electron/` reste en JS (frontière) → migration JS→TS close | Prise  |
 
 ## À trancher
 

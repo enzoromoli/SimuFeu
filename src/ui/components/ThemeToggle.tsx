@@ -1,4 +1,11 @@
-export default function ThemeToggle({ theme, onToggle }) {
+export type Theme = 'light' | 'dark';
+
+interface ThemeToggleProps {
+  theme: Theme;
+  onToggle: () => void;
+}
+
+export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
   const isLight = theme === 'light';
 
   return (

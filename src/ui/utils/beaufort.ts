@@ -1,4 +1,13 @@
-const SCALE = [
+export type BeaufortLevel = 'calm' | 'moderate' | 'strong' | 'severe' | 'extreme'
+
+export interface BeaufortEntry {
+  force: number
+  max: number
+  label: string
+  level: BeaufortLevel
+}
+
+const SCALE: BeaufortEntry[] = [
   { force: 0, max: 1, label: 'Calme', level: 'calm' },
   { force: 1, max: 5, label: 'Très légère brise', level: 'calm' },
   { force: 2, max: 11, label: 'Légère brise', level: 'calm' },
@@ -12,8 +21,8 @@ const SCALE = [
   { force: 10, max: 102, label: 'Tempête', level: 'severe' },
   { force: 11, max: 117, label: 'Violente tempête', level: 'extreme' },
   { force: 12, max: Infinity, label: 'Ouragan', level: 'extreme' },
-];
+]
 
-export function getBeaufort(speedKmh) {
-  return SCALE.find((entry) => speedKmh <= entry.max) ?? SCALE[SCALE.length - 1];
+export function getBeaufort(speedKmh: number): BeaufortEntry {
+  return SCALE.find((entry) => speedKmh <= entry.max) ?? SCALE[SCALE.length - 1]!
 }

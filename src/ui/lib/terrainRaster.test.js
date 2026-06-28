@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { TerrainType } from '../../../engine/types'
-import { colorToTerrain, TERRAIN_PALETTE_HEX, PALETTE_TERRAIN } from './terrainRaster.js'
+import { colorToTerrain, TERRAIN_PALETTE_HEX, PALETTE_TERRAIN } from './terrainRaster'
 
 const rgb = (hex) => [
   parseInt(hex.slice(1, 3), 16),

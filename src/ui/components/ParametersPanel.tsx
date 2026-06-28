@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import WindCompass from './WindCompass.jsx';
-import { getBeaufort } from '../utils/beaufort.js';
+import WindCompass from './WindCompass';
+import { getBeaufort } from '../utils/beaufort';
+import type { SimParams, UpdateParam, Zone } from '../types/sim';
 import './ParametersPanel.css';
 
-function clamp(value, min, max) {
+type AutoStatus = 'idle' | 'loading' | 'success' | 'error';
+
+function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function FreshnessPill({ lastUpdate }) {
+function FreshnessPill({ lastUpdate }: { lastUpdate: Date }) {
   const ageMin = (Date.now() - lastUpdate.getTime()) / 60_000;
   const { bg, color } = ageMin < 30
     ? { bg: 'rgba(59,109,17,0.2)', color: '#7BC244' }
@@ -21,12 +24,21 @@ function FreshnessPill({ lastUpdate }) {
   );
 }
 
-export default function ParametersPanel({ params, onChange, zone, nameError = false, nameErrorKey = 0, debugMode = false }) {
+interface ParametersPanelProps {
+  params: SimParams;
+  onChange: UpdateParam;
+  zone: Zone | null;
+  nameError?: boolean;
+  nameErrorKey?: number;
+  debugMode?: boolean;
+}
+
+export default function ParametersPanel({ params, onChange, zone, nameError = false, nameErrorKey = 0, debugMode = false }: ParametersPanelProps) {
   const beaufort = getBeaufort(params.windSpeed);
 
   const [auto, setAuto] = useState(false);
-  const [autoStatus, setAutoStatus] = useState('idle');
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [autoStatus, setAutoStatus] = useState<AutoStatus>('idle');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [, setTick] = useState(0);
 

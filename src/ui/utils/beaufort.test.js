@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getBeaufort } from './beaufort.js'
+import { getBeaufort } from './beaufort'
 
 describe('getBeaufort', () => {
   it('classe une vitesse dans la bonne force', () => {

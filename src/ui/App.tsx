@@ -1,24 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import ThemeToggle from './components/ThemeToggle.jsx';
-import MapPanel from './components/MapPanel.jsx';
-import ParametersPanel from './components/ParametersPanel.jsx';
-import SimulationView from './components/SimulationView.jsx';
+import ThemeToggle from './components/ThemeToggle';
+import MapPanel from './components/MapPanel';
+import ParametersPanel from './components/ParametersPanel';
+import SimulationView from './components/SimulationView';
+import type { Theme } from './components/ThemeToggle';
+import type { MapLayer, SimParams, Zone } from './types/sim';
 import './App.css';
 
 const THEME_STORAGE_KEY = 'simufeu-theme';
 
-function getInitialTheme() {
+function getInitialTheme(): Theme {
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
   return stored === 'light' ? 'light' : 'dark';
 }
 
-function localDateTimeString() {
+function localDateTimeString(): string {
   const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
+  const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function createInitialParams() {
+function createInitialParams(): SimParams {
   return {
     simName: '',
     simDate: localDateTimeString(),
@@ -34,11 +36,11 @@ function createInitialParams() {
 }
 
 export default function App() {
-  const [params, setParams] = useState(createInitialParams);
-  const [zone, setZone] = useState(null);
-  const [mapLayer, setMapLayer] = useState('plan');
-  const [theme, setTheme] = useState(getInitialTheme);
-  const [view, setView] = useState('setup');
+  const [params, setParams] = useState<SimParams>(createInitialParams);
+  const [zone, setZone] = useState<Zone | null>(null);
+  const [mapLayer, setMapLayer] = useState<MapLayer>('plan');
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [view, setView] = useState<'setup' | 'simulation'>('setup');
   const [nameError, setNameError] = useState(false);
   const [nameErrorKey, setNameErrorKey] = useState(0);
   const [debugMode, setDebugMode] = useState(false);
@@ -47,7 +49,7 @@ export default function App() {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
-  const updateParam = useCallback((key, value) => {
+  const updateParam = useCallback(<K extends keyof SimParams>(key: K, value: SimParams[K]) => {
     setParams((prev) => ({ ...prev, [key]: value }));
     if (key === 'simName') setNameError(false);
   }, []);

@@ -3,8 +3,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CellState } from '../../../engine/types';
 import { hexToPixel } from '../../../engine/hexUtils';
-import { boundsToGrid, latLngToCell, pixelToLatLng } from '../../domain/geoGrid';
-import { buildTerrainRaster, sampleGridTerrain } from '../lib/terrainRaster.js';
+import type { StateMsg, WorkerOutMsg } from '../../../engine/protocol';
+import { boundsToGrid, latLngToCell, pixelToLatLng, GridGeo } from '../../domain/geoGrid';
+import { buildTerrainRaster, sampleGridTerrain } from '../lib/terrainRaster';
+import type { SimParams, Zone } from '../types/sim';
 import './SimulationView.css';
 
 const STEP_MIN = 3;        // minutes simulées par tick (affichage)
@@ -62,21 +64,21 @@ const LEGEND_ITEMS = [
   { color: '#9898a8', label: 'Zone industrielle' },
 ];
 
-function formatHHMM(totalMin) {
+function formatHHMM(totalMin: number): string {
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-function degToCardinalFR(deg) {
+function degToCardinalFR(deg: number): string {
   const dirs = ['Nord', 'Nord-Est', 'Est', 'Sud-Est', 'Sud', 'Sud-Ouest', 'Ouest', 'Nord-Ouest'];
-  return dirs[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+  return dirs[Math.round((((deg % 360) + 360) % 360) / 45) % 8] ?? 'Nord';
 }
 
 // Les 6 coins (lat/lon) d'une cellule hexagonale pointy-top.
-function hexCorners(geo, q, r) {
+function hexCorners(geo: GridGeo, q: number, r: number): [number, number][] {
   const c = hexToPixel(q, r, 1);
-  const pts = [];
+  const pts: [number, number][] = [];
   for (let i = 0; i < 6; i++) {
     const ang = (Math.PI / 180) * (60 * i - 30);
     const { lat, lng } = pixelToLatLng(geo, c.x + Math.cos(ang), c.y + Math.sin(ang));
@@ -85,20 +87,26 @@ function hexCorners(geo, q, r) {
   return pts;
 }
 
-export default function SimulationView({ zone, params, onExit }) {
-  const mapElRef = useRef(null);
-  const mapRef = useRef(null);
-  const zoneBoundsRef = useRef(null);
-  const geoRef = useRef(null);
+interface SimulationViewProps {
+  zone: Zone | null;
+  params: SimParams;
+  onExit: () => void;
+}
+
+export default function SimulationView({ zone, params, onExit }: SimulationViewProps) {
+  const mapElRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const zoneBoundsRef = useRef<L.LatLngBounds | null>(null);
+  const geoRef = useRef<GridGeo | null>(null);
   const isPlayingRef = useRef(false);
   const lastTickRef = useRef(0);
 
   const [mapReady, setMapReady] = useState(false);
-  const [engineState, setEngineState] = useState(null);
+  const [engineState, setEngineState] = useState<StateMsg | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [activeTool, setActiveTool] = useState('feu');
-  const [terrainURL, setTerrainURL] = useState(null);
+  const [terrainURL, setTerrainURL] = useState<string | null>(null);
   const [terrainLoading, setTerrainLoading] = useState(false);
 
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -119,7 +127,7 @@ export default function SimulationView({ zone, params, onExit }) {
   const fuelMoisture = params.fuelMoisture ?? 12;
 
   const sendForward = () => window.engine?.send({ type: 'navigate', direction: 'forward' });
-  const sendJump = (t) => window.engine?.send({ type: 'navigate', direction: 'jump', tick: t });
+  const sendJump = (t: number) => window.engine?.send({ type: 'navigate', direction: 'jump', tick: t });
   const sendBackward = () => window.engine?.send({ type: 'navigate', direction: 'backward' });
 
   const handleFitZone = () => {
@@ -164,8 +172,8 @@ export default function SimulationView({ zone, params, onExit }) {
     const geo = boundsToGrid(zone.bounds, RADIUS);
     geoRef.current = geo;
 
-    const handler = (msg) => {
-      if (!alive || msg?.type !== 'state') return;
+    const handler = (msg: WorkerOutMsg) => {
+      if (!alive || msg.type !== 'state') return;
       setEngineState(msg);
       if (isPlayingRef.current && msg.tick === lastTickRef.current) setIsPlaying(false);
       lastTickRef.current = msg.tick;
@@ -192,7 +200,7 @@ export default function SimulationView({ zone, params, onExit }) {
   useEffect(() => {
     if (!mapRef.current || !terrainURL || !zoneBoundsRef.current) return;
     const overlay = L.imageOverlay(terrainURL, zoneBoundsRef.current, { opacity: 1, interactive: false, className: 'sim-terrain' }).addTo(mapRef.current);
-    return () => overlay.remove();
+    return () => { overlay.remove(); };
   }, [terrainURL]);
 
   // ── Effet 4 : couche feu (hexagones ON_FIRE / BURNED) ───────────────────
@@ -211,19 +219,19 @@ export default function SimulationView({ zone, params, onExit }) {
       }).addTo(group);
     }
     group.addTo(map);
-    return () => group.remove();
+    return () => { group.remove(); };
   }, [engineState, mapReady]);
 
   // ── Effet 5 : clic carte → outil actif ──────────────────────────────────
   useEffect(() => {
     const map = mapRef.current, geo = geoRef.current;
     if (!map || !geo || !mapReady) return;
-    const onClick = (e) => {
+    const onClick = (e: L.LeafletMouseEvent) => {
       const { id } = latLngToCell(geo, e.latlng.lat, e.latlng.lng);
       if (activeTool === 'feu') window.engine?.send({ type: 'ignite', id });
     };
     map.on('click', onClick);
-    return () => map.off('click', onClick);
+    return () => { map.off('click', onClick); };
   }, [activeTool, mapReady]);
 
   // ── Effet 6 : lecture (navigate forward cadencé) ────────────────────────

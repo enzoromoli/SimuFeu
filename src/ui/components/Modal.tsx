@@ -1,6 +1,18 @@
+import type { ReactNode } from 'react';
 import './Modal.css';
 
-export default function Modal({ open, title, onClose, onConfirm, confirmLabel, cancelLabel, confirmDanger, children }) {
+interface ModalProps {
+  open: boolean;
+  title?: ReactNode;
+  onClose: () => void;
+  onConfirm?: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  confirmDanger?: boolean;
+  children?: ReactNode;
+}
+
+export default function Modal({ open, title, onClose, onConfirm, confirmLabel, cancelLabel, confirmDanger, children }: ModalProps) {
   if (!open) return null;
 
   return (

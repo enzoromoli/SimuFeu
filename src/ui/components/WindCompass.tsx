@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import './WindCompass.css';
 
 const DIRECTIONS = [
@@ -10,16 +11,23 @@ const DIRECTIONS = [
 
 const TICKS = Array.from({ length: 16 }, (_, i) => i * 22.5);
 
-function directionLabel(deg) {
+function directionLabel(deg: number): string {
   const index = Math.round(deg / 22.5) % 16;
-  return DIRECTIONS[index];
+  return DIRECTIONS[index] ?? 'Nord';
 }
 
-export default function WindCompass({ value, onChange, disabled = false }) {
-  const svgRef = useRef(null);
+interface WindCompassProps {
+  value: number;
+  onChange: (deg: number) => void;
+  disabled?: boolean;
+}
+
+export default function WindCompass({ value, onChange, disabled = false }: WindCompassProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const draggingRef = useRef(false);
 
-  const angleFromPointer = useCallback((clientX, clientY) => {
+  const angleFromPointer = useCallback((clientX: number, clientY: number) => {
+    if (!svgRef.current) return 0;
     const rect = svgRef.current.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -29,7 +37,7 @@ export default function WindCompass({ value, onChange, disabled = false }) {
     return Math.round((angle + 360) % 360);
   }, []);
 
-  const handlePointerMove = useCallback((event) => {
+  const handlePointerMove = useCallback((event: PointerEvent) => {
     if (!draggingRef.current) return;
     onChange(angleFromPointer(event.clientX, event.clientY));
   }, [angleFromPointer, onChange]);
@@ -40,7 +48,7 @@ export default function WindCompass({ value, onChange, disabled = false }) {
     window.removeEventListener('pointerup', handlePointerUp);
   }, [handlePointerMove]);
 
-  const handlePointerDown = useCallback((event) => {
+  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (disabled) return;
     draggingRef.current = true;
     onChange(angleFromPointer(event.clientX, event.clientY));
@@ -48,7 +56,7 @@ export default function WindCompass({ value, onChange, disabled = false }) {
     window.addEventListener('pointerup', handlePointerUp);
   }, [disabled, angleFromPointer, handlePointerMove, handlePointerUp, onChange]);
 
-  const handleKeyDown = useCallback((event) => {
+  const handleKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
     if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
       onChange((value + 1) % 360);

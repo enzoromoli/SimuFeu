@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import Modal from './Modal.jsx';
+import Modal from './Modal';
+import type { MapLayer, Zone } from '../types/sim';
 import './MapPanel.css';
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  address?: Record<string, string>;
+  boundingbox: [string, string, string, string];
+}
 
 const TILE_LAYERS = {
   plan: {
@@ -15,12 +24,12 @@ const TILE_LAYERS = {
   },
 };
 
-const DEFAULT_CENTER = [46.8, 2.5];
+const DEFAULT_CENTER: [number, number] = [46.8, 2.5];
 const DEFAULT_ZOOM = 6;
 const MIN_ZONE_SIZE_METERS = 10;
 const MAX_ZONE_AREA_KM2 = 120;
 
-function computeAreaKm2(bounds) {
+function computeAreaKm2(bounds: L.LatLngBounds): number {
   const nw = bounds.getNorthWest();
   const ne = bounds.getNorthEast();
   const sw = bounds.getSouthWest();
@@ -29,16 +38,16 @@ function computeAreaKm2(bounds) {
   return (widthM * heightM) / 1e6;
 }
 
-function formatArea(areaKm2) {
+function formatArea(areaKm2: number): string {
   if (areaKm2 < 1) return `${Math.round(areaKm2 * 100) / 100} km²`;
   return `${areaKm2.toFixed(1)} km²`;
 }
 
-function formatBounds(bounds) {
+function formatBounds(bounds: Zone['bounds']): string {
   return `${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)} → ${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}`;
 }
 
-function formatSuggestion(result) {
+function formatSuggestion(result: NominatimResult): string {
   const address = result.address || {};
   const city = address.city || address.town || address.village || address.municipality || address.county;
   const country = address.country;
@@ -46,23 +55,31 @@ function formatSuggestion(result) {
   return city || country || result.display_name;
 }
 
-export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }) {
-  const mapElRef = useRef(null);
-  const mapRef = useRef(null);
-  const tileLayerRef = useRef(null);
-  const rectangleRef = useRef(null);
-  const drawStateRef = useRef({ drawing: false, start: null });
+interface MapPanelProps {
+  mapLayer: MapLayer;
+  onLayerChange: (layer: MapLayer) => void;
+  zone: Zone | null;
+  onZoneChange: (zone: Zone | null) => void;
+}
 
-  const [interactionMode, setInteractionMode] = useState(null); // null | 'draw'
+export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }: MapPanelProps) {
+  const mapElRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const rectangleRef = useRef<L.Rectangle | null>(null);
+  const drawStateRef = useRef<{ drawing: boolean; start: L.LatLng | null }>({ drawing: false, start: null });
+
+  const [interactionMode, setInteractionMode] = useState<'draw' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showAreaErrorModal, setShowAreaErrorModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Initialize the map once.
   useEffect(() => {
+    if (!mapElRef.current) return;
     const map = L.map(mapElRef.current, {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
@@ -97,7 +114,7 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
     if (!map) return;
     const drawMode = interactionMode === 'draw';
 
-    const onMouseDown = (event) => {
+    const onMouseDown = (event: L.LeafletMouseEvent) => {
       if (!drawMode) return;
       drawStateRef.current = { drawing: true, start: event.latlng };
       if (rectangleRef.current) {
@@ -107,9 +124,10 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
       map.dragging.disable();
     };
 
-    const onMouseMove = (event) => {
-      if (!drawStateRef.current.drawing) return;
-      const bounds = L.latLngBounds(drawStateRef.current.start, event.latlng);
+    const onMouseMove = (event: L.LeafletMouseEvent) => {
+      const start = drawStateRef.current.start;
+      if (!drawStateRef.current.drawing || !start) return;
+      const bounds = L.latLngBounds(start, event.latlng);
       if (rectangleRef.current) {
         rectangleRef.current.setBounds(bounds);
       } else {
@@ -117,12 +135,13 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
       }
     };
 
-    const onMouseUp = (event) => {
-      if (!drawStateRef.current.drawing) return;
+    const onMouseUp = (event: L.LeafletMouseEvent) => {
+      const start = drawStateRef.current.start;
+      if (!drawStateRef.current.drawing || !start) return;
       drawStateRef.current.drawing = false;
       map.dragging.enable();
 
-      const bounds = L.latLngBounds(drawStateRef.current.start, event.latlng);
+      const bounds = L.latLngBounds(start, event.latlng);
       const isLargeEnough = bounds.getNorthEast().distanceTo(bounds.getSouthWest()) > MIN_ZONE_SIZE_METERS;
       const areaKm2 = computeAreaKm2(bounds);
 
@@ -202,7 +221,7 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
     performReset();
   }, [zone, performReset]);
 
-  const handleSearch = useCallback(async (event) => {
+  const handleSearch = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowSuggestions(false);
     const query = searchQuery.trim();
@@ -219,7 +238,7 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
           [parseFloat(boundingbox[0]), parseFloat(boundingbox[2])],
           [parseFloat(boundingbox[1]), parseFloat(boundingbox[3])],
         );
-        mapRef.current.fitBounds(bounds, { maxZoom: 14 });
+        mapRef.current?.fitBounds(bounds, { maxZoom: 14 });
         setSearchStatus('');
       } else {
         setSearchStatus('Aucun résultat trouvé.');
@@ -259,13 +278,13 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const selectSuggestion = useCallback((result) => {
+  const selectSuggestion = useCallback((result: NominatimResult) => {
     const { boundingbox } = result;
     const bounds = L.latLngBounds(
       [parseFloat(boundingbox[0]), parseFloat(boundingbox[2])],
       [parseFloat(boundingbox[1]), parseFloat(boundingbox[3])],
     );
-    mapRef.current.fitBounds(bounds, { maxZoom: 14 });
+    mapRef.current?.fitBounds(bounds, { maxZoom: 14 });
     setSearchQuery(formatSuggestion(result));
     setSuggestions([]);
     setShowSuggestions(false);
