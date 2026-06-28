@@ -1,0 +1,572 @@
+.sim-view {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.sim-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #0c1522;
+}
+
+/* Leaflet map background (overrides default grey) */
+.sim-map.leaflet-container {
+  background: #0c1522;
+}
+
+/* Hide Leaflet default controls (we use our own) */
+.sim-map .leaflet-control-container {
+  display: none;
+}
+
+/* Terrain overlay — rendu pixel art sans lissage */
+.sim-terrain img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+
+/* ── HUD overlay ── */
+.sim-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.sim-hud > * {
+  pointer-events: auto;
+}
+
+/* ── Terrain loading overlay ── */
+.sim-terrain-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(28, 43, 80, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.sim-terrain-loading__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: sim-pulse 1s ease-in-out infinite;
+}
+
+@keyframes sim-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ── Stats panel (top-left) ── */
+.sim-stats-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 260px;
+  background: rgba(28, 43, 80, 0.88);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.sim-stats-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sim-stats-panel__title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.sim-stats-panel__timer {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sim-stat-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sim-stat-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  gap: 8px;
+}
+
+.sim-stat-list li > :first-child {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.val-accent {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.val-bold {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.val-warn {
+  color: var(--accent);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Map controls (top-right dark circles) ── */
+.sim-map-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-map-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(28, 43, 80, 0.90);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sim-map-btn:hover {
+  background: rgba(245, 146, 30, 0.18);
+  border-color: rgba(245, 146, 30, 0.35);
+  color: var(--accent);
+}
+
+/* ── Bottom layout ── */
+.sim-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 20px 20px;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.sim-bottom > * {
+  pointer-events: auto;
+}
+
+/* Left column: legend + home */
+.sim-bottom-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Legend */
+.sim-legend {
+  background: rgba(28, 43, 80, 0.88);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.sim-legend::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sim-legend::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sim-legend::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+.sim-legend__title {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.sim-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.73rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.sim-legend__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sim-legend__ring {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+}
+
+/* Home button */
+.sim-home-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: #1a1206;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(245, 146, 30, 0.45);
+  transition: background 0.15s, transform 0.1s;
+}
+
+.sim-home-btn:hover {
+  background: var(--accent-dark);
+  transform: scale(1.06);
+}
+
+/* Center: two bars */
+.sim-bottom-center {
+  flex: 1;
+  max-width: 740px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-bar {
+  background: rgba(28, 43, 80, 0.90);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+
+/* ── Bar 1: Playback ── */
+.sim-bar--playback {
+  padding: 14px 20px 16px;
+}
+
+.sim-progress {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sim-progress__cur {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 64px;
+}
+
+.sim-progress__cur em {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.sim-progress__total {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 42px;
+  text-align: right;
+}
+
+.sim-progress__track {
+  flex: 1;
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+}
+
+.sim-progress__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  pointer-events: none;
+  transition: width 0.15s linear;
+}
+
+.sim-progress__input {
+  position: absolute;
+  inset: -10px 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* Playback row */
+.sim-playback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sim-ctl {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.sim-ctl:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sim-ctl--play {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  margin: 0 2px;
+}
+
+.sim-ctl--play:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sim-speeds {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+}
+
+.sim-speed {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sim-speed.is-active {
+  background: rgba(245, 146, 30, 0.2);
+  color: var(--accent);
+  border-color: rgba(245, 146, 30, 0.4);
+}
+
+/* ── Bar 2: Tools — plus courte en largeur que la barre lecture ── */
+.sim-bar--tools {
+  flex-direction: row;
+  padding: 6px 14px;
+  gap: 0;
+  justify-content: center;
+  width: fit-content;
+}
+
+.sim-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  min-width: 54px;
+}
+
+.sim-tool:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.sim-tool.is-active .sim-tool__icon {
+  background: var(--accent);
+  color: #1a1206;
+}
+
+.sim-tool.is-active {
+  color: var(--text);
+}
+
+.sim-tool__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.15s, color 0.15s;
+}
+
+.sim-tool__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sim-tool__label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Wind card (right) ── */
+.sim-wind {
+  flex-shrink: 0;
+  width: 110px;
+  background: rgba(28, 43, 80, 0.90);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.sim-wind__title {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 2px;
+}
+
+.sim-wind__rose {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(14, 22, 48, 0.80);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sim-wind__arrow {
+  color: var(--accent);
+  display: flex;
+  transition: transform 0.6s ease;
+}
+
+.sim-wind__speed {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.sim-wind__unit {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.sim-wind__deg {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sim-wind__cardinal {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+}

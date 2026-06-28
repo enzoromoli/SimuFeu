@@ -6,3 +6,6 @@ dist/
 
 # Artefacts de compilation TypeScript
 engine/*.js
+
+# Build Vite de la couche UI
+src/ui/dist/

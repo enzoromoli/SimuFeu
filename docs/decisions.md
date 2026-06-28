@@ -32,13 +32,31 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 | 2026-06-25 | Feature OSM sans tag reconnu : **ignorée** par le classifieur             | Choix initial simple, **réversible** (pourra devenir un type « inconnu »)  | Prise  |
 | 2026-06-25 | Cache derrière une **interface** `OsmCache` (get/set), impl. fichiers (`fs`) | `fs` pour scripts/tests Node ; impl. IndexedDB plus tard côté renderer (pas d'accès `fs`) | Prise  |
 | 2026-06-25 | Script de démo exécuté via **tsx** (`npm run ingest:demo`)                | Lance le `.ts` sans étape de build                                        | Prise  |
+| 2026-06-28 | UI en **React + Vite**, isolée dans la couche **`src/ui/`** (`vite root = src/ui`) | Matérialise l'archi en couches (engine/domain/app/ui) ; sépare le code renderer React des couches métier `src/domain` et `src/app` | Prise  |
+| 2026-06-28 | **Port** de l'UI sur branche neuve `feat/ui-integration` depuis `dev` (pas de merge de `feat/settings-page`) | `feat/settings-page` a divergé avant le moteur (stub `engine/worker.js`, aucun fichier moteur TS) ; un merge écraserait/entrerait en conflit avec le moteur | Prise  |
+| 2026-06-28 | Cohabitation outillage **Vite** (renderer) + **tsc** (engine→js) + **vitest**, harnais UI jsdom + RTL ajouté | Lancer React sans casser le build moteur ni les tests Node existants ; pouvoir tester les composants | Prise  |
+| 2026-06-28 | Vue de simu branchée au moteur en **2 couches** (raster terrain en fond + feu en surcouche) | Plus rapide à brancher en réutilisant le raster OSM existant ; grille hex unifiée = polish optionnel sans gain de cohérence | Prise  |
+| 2026-06-28 | Cohérence terrain : **grille moteur remplie par échantillonnage du raster OSM** (pixel du centroïde → TerrainType) | Terrain affiché = terrain simulé, sans écrire de géométrie point-dans-polygone | Prise  |
+| 2026-06-28 | **Géoréférencement de la grille** (bbox → rayon/origine, hex ↔ lat/lon) = nouvelle feature dans `src/domain` | Le moteur reste agnostique géographiquement ; lève le hors-scope « grille + géoréférencement » de `osm-ingestion.md` | Prise  |
+| 2026-06-28 | **`electron/` reste en JS** ; seuls `src/ui` + renderer passent en TS | Frontière Electron petite et stable ; éviter un build du process principal ; referme partiellement la migration JS→TS | Prise  |
+| 2026-06-28 | Message worker **`loadTerrain { cells }`** + helper pur `loadTerrains` | Remplir le terrain de toute la grille en un message au lieu de centaines de `paint` | Prise  |
+| 2026-06-28 | Pas de `React.StrictMode` sur l'app | Le double-montage des effets en dev rejouait l'init impérative Leaflet + les abonnements IPC (`window.engine`, sans désabonnement) → doublons/races | Prise  |
+| 2026-06-28 | Vite : préférer les sources `.ts` aux `.js` du moteur (`resolve.extensions`) | `engine/*.js` (CommonJS, pour le worker Node) cassait l'analyse ESM de Rollup ; le renderer consomme les sources `.ts` | Prise  |
+| 2026-06-28 | UI convertie en **TypeScript** (`src/ui/*.tsx`) ; `tsconfig` UI dédié (lib DOM, jsx react), `typecheck` = root + UI | Lot 3 : tout le code applicatif neuf est typé ; `electron/` reste en JS (frontière) → migration JS→TS close | Prise  |
 
 ## À trancher
 
 Questions ouvertes que l'équipe doit résoudre ensemble (ajouter ici la décision dès
 qu'elle est arrêtée, puis la déplacer vers le tableau ci-dessus).
 
+- **Inflammabilité du terrain urbain** : `RESIDENTIAL` (0.45) et `INDUSTRIAL` (0.55) brûlent
+  presque comme la forêt — le feu se propage sur le béton. Faut-il en faire des coupe-feu
+  (flammability 0), réduire fortement leur inflammabilité (interface forêt-ville), ou garder
+  le modèle wildland-urban ? Lié : le défaut d'échantillonnage du raster mappe les pixels
+  **non classés** (`#e8e4d8`) vers `GRASSLAND` (inflammable) — à passer en terrain ininflammable ?
 - **Coordonnées de la grille hexagonale** : offset ou axiales ?
 - **Durée de combustion** : combien de ticks avant qu'une cellule en feu passe à « brûlée » ?
-- **Migration JS → TypeScript** : le **nouveau** code est désormais en TS (décision 2026-06-25) ;
-  reste à trancher *quand/comment* migrer le code **existant** (`electron/`, `src/renderer.js`) vers TS strict.
+- **Migration JS → TypeScript** : le **nouveau** code est en TS (décision 2026-06-25) ;
+  `src/renderer.js` (stub) est supprimé et l'UI portée passe en `.tsx` (lot 3, décision
+  2026-06-28) ; **`electron/` reste volontairement en JS** (décision 2026-06-28). Plus de
+  code applicatif JS à migrer — question close.
