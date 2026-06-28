@@ -78,3 +78,18 @@ export function paintTerrain(id: string, terrain: TerrainType, state: SimState):
   newCells.set(id, { ...cell, terrain, state: CellState.INTACT, fireTick: null, ignitionPressure: 0 })
   return { ...state, cells: newCells }
 }
+
+// Remplissage en masse du terrain (ex. import depuis la carte). Les ids inconnus sont
+// ignorés. Chaque cellule touchée est remise à INTACT (cohérent avec paintTerrain).
+export function loadTerrains(
+  patches: { id: string; terrain: TerrainType }[],
+  state: SimState,
+): SimState {
+  const newCells = new Map(state.cells)
+  for (const { id, terrain } of patches) {
+    const cell = newCells.get(id)
+    if (!cell) continue
+    newCells.set(id, { ...cell, terrain, state: CellState.INTACT, fireTick: null, ignitionPressure: 0 })
+  }
+  return { ...state, cells: newCells }
+}

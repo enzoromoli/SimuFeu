@@ -73,7 +73,8 @@ export default function App() {
       return;
     }
     setNameError(false);
-    window.engine?.send({ type: 'simulation:create', payload: { ...params, zone } });
+    // L'initialisation du moteur (init/loadTerrain) est pilotée par SimulationView
+    // une fois la zone et les paramètres connus.
     setView('simulation');
   };
 

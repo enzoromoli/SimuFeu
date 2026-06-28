@@ -8,6 +8,11 @@ export default defineConfig({
   root: resolve(__dirname, 'src/ui'),
   base: './',
   plugins: [react()],
+  resolve: {
+    // Préférer les sources .ts aux .js compilés du moteur (engine/*.js, produits par
+    // tsc pour le worker Node, sont en CommonJS et cassent l'analyse ESM de Rollup).
+    extensions: ['.mts', '.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
+  },
   build: {
     outDir: resolve(__dirname, 'src/ui/dist'),
     emptyOutDir: true,

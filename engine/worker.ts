@@ -1,20 +1,15 @@
 import { parentPort } from 'worker_threads'
 import { makeGrid } from './hexUtils'
-import { placeInitialFire, paintTerrain } from './simEngine'
+import { placeInitialFire, paintTerrain, loadTerrains } from './simEngine'
 import { createHistoryManager, HistoryManager } from './historyManager'
 import { TERRAIN_CONFIG } from './terrainConfig'
-import { SimState, TerrainType } from './types'
+import { SimState } from './types'
+import { WorkerInMsg } from './protocol'
 
 const DEFAULT_RADIUS = 12
 const DEFAULT_SEED   = 0xdeadbeef
 
-type InMsg =
-  | { type: 'init';     radius?: number; seed?: number }
-  | { type: 'navigate'; direction: 'forward' | 'backward' | 'jump'; tick?: number }
-  | { type: 'ignite';   id: string }
-  | { type: 'paint';    id: string; terrain: TerrainType }
-  | { type: 'setPhase'; phase: SimState['phase'] }
-  | { type: 'reset';    radius?: number; seed?: number }
+type InMsg = WorkerInMsg
 
 let hm: HistoryManager = createHistoryManager(
   { cells: makeGrid(DEFAULT_RADIUS), tick: 0, phase: 'setup' },
@@ -79,6 +74,12 @@ parentPort!.on('message', (msg: InMsg) => {
 
     case 'paint': {
       hm.applyAndInvalidate(currentTick, s => paintTerrain(msg.id, msg.terrain, s))
+      sendCurrentState()
+      break
+    }
+
+    case 'loadTerrain': {
+      hm.applyAndInvalidate(currentTick, s => loadTerrains(msg.cells, s))
       sendCurrentState()
       break
     }
