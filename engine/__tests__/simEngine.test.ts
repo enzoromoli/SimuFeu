@@ -226,6 +226,23 @@ describe('computeIgnitionProb — météo', () => {
     expect(computeIgnitionProb(cell, [fireNeighbor()], coldWet))
       .toBeLessThan(computeIgnitionProb(cell, [fireNeighbor()], W))
   })
+
+  it('un voisin sous le vent ignite plus probablement qu\'à contre-vent', () => {
+    // voisin Est en feu ⇒ propagation vers l'Ouest (cap 270°)
+    const cell = makeCell({ id: '0,0,0', terrain: TerrainType.FOREST })
+    const downwind = { ...NEUTRAL_WEATHER, windSpeed: 40, windDirection: 90 }  // vent d'Est → pousse vers l'Ouest
+    const upwind   = { ...NEUTRAL_WEATHER, windSpeed: 40, windDirection: 270 } // vent d'Ouest → pousse vers l'Est
+    expect(computeIgnitionProb(cell, [fireNeighbor()], downwind))
+      .toBeGreaterThan(computeIgnitionProb(cell, [fireNeighbor()], upwind))
+  })
+
+  it('windSpeed = 0 ⇒ résultat identique quelle que soit la direction (pas de vent)', () => {
+    const cell = makeCell({ id: '0,0,0', terrain: TerrainType.FOREST })
+    const a = { ...NEUTRAL_WEATHER, windSpeed: 0, windDirection: 90 }
+    const b = { ...NEUTRAL_WEATHER, windSpeed: 0, windDirection: 270 }
+    expect(computeIgnitionProb(cell, [fireNeighbor()], a))
+      .toBe(computeIgnitionProb(cell, [fireNeighbor()], b))
+  })
 })
 
 describe('step — météo', () => {

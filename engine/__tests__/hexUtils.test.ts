@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cellId, getNeighbors, hexToPixel, pixelToHex, makeGrid } from '../hexUtils'
+import { cellId, getNeighbors, hexToPixel, pixelToHex, makeGrid, hexDirectionDeg } from '../hexUtils'
 import { CellState, TerrainType } from '../types'
 
 describe('cellId', () => {
@@ -107,5 +107,30 @@ describe('hexToPixel / pixelToHex', () => {
       expect(result.r).toBe(r)
       expect(result.s).toBe(s)
     }
+  })
+})
+
+describe('hexDirectionDeg', () => {
+  it('le voisin (+q) pointe plein Est (90°)', () => {
+    expect(hexDirectionDeg(1, 0)).toBeCloseTo(90)
+  })
+
+  it('le voisin (−q) pointe plein Ouest (270°)', () => {
+    expect(hexDirectionDeg(-1, 0)).toBeCloseTo(270)
+  })
+
+  it('les caps sont dans [0, 360)', () => {
+    const dirs: [number, number][] = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]
+    for (const [dq, dr] of dirs) {
+      const deg = hexDirectionDeg(dq, dr)
+      expect(deg).toBeGreaterThanOrEqual(0)
+      expect(deg).toBeLessThan(360)
+    }
+  })
+
+  it('deux directions opposées sont à 180° l\'une de l\'autre', () => {
+    const a = hexDirectionDeg(1, -1)   // 30°
+    const b = hexDirectionDeg(-1, 1)   // 210°
+    expect(Math.abs(a - b)).toBeCloseTo(180)
   })
 })

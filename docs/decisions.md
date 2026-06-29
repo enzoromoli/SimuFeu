@@ -64,9 +64,11 @@ qu'elle est arrêtée, puis la déplacer vers le tableau ci-dessus).
 - **Coefficients d'équilibrage météo** (cf. `engine/weather.ts`, feature `weather-propagation`) :
   valeurs **proposées**, à valider/ajuster sur des cas réels. Facteur d'ignition =
   `(1 + (T−20)/40) · (1 + (40−humidité)/120) · (1 + (12−combustible)/60)` (chaque sous-facteur
-  vaut 1 à la météo neutre) ; durée de combustion = `burnDuration · (1 + combustible/50)`. Sont à
-  trancher : la sensibilité température/humidité, et si l'humidité du combustible doit
-  **allonger** la combustion (smoldering, choix actuel) ou plutôt la raccourcir/empêcher l'ignition.
+  vaut 1 à la météo neutre) ; durée de combustion = `burnDuration · (1 + combustible/50)` ;
+  vent = `1 + windStrength·cos(Δ)` avec `windStrength = min(windSpeed/50, 1)·0.9`. Sont à
+  trancher : l'intensité du vent (coef 0.9, vitesse de référence 50 km/h), la sensibilité
+  température/humidité, et si l'humidité du combustible doit **allonger** la combustion
+  (smoldering, choix actuel) ou plutôt la raccourcir/empêcher l'ignition.
 - **Migration JS → TypeScript** : le **nouveau** code est en TS (décision 2026-06-25) ;
   `src/renderer.js` (stub) est supprimé et l'UI portée passe en `.tsx` (lot 3, décision
   2026-06-28) ; **`electron/` reste volontairement en JS** (décision 2026-06-28). Plus de

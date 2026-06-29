@@ -18,6 +18,11 @@ const TEMP_REF = 20,  TEMP_DIV = 40   // °C
 const HUM_REF  = 40,  HUM_DIV  = 120  // % air
 const FUEL_REF = 12,  FUEL_DIV = 60   // % combustible
 
+// Vent : windStrength ∈ [0, WIND_COEFF] croît avec windSpeed jusqu'à WIND_SPEED_REF km/h.
+// windFactor = 1 + windStrength·cos(Δ) reste alors dans [1 − WIND_COEFF, 1 + WIND_COEFF].
+const WIND_COEFF     = 0.9
+const WIND_SPEED_REF = 50 // km/h pour atteindre la pleine intensité directionnelle
+
 /**
  * Facteur scalaire global (≥ 0) appliqué à la probabilité d'ignition selon température,
  * humidité de l'air et humidité du combustible. Météo neutre ⇒ 1.
@@ -36,4 +41,18 @@ export function weatherIgnitionFactor(w: Weather): number {
 export function effectiveBurnDuration(burnDuration: number, w: Weather): number {
   if (burnDuration === 0) return 0
   return Math.max(1, Math.round(burnDuration * (1 + w.fuelMoisture / 50)))
+}
+
+/**
+ * Multiplicateur directionnel (≥ 0) pour un voisin en feu, selon l'alignement du cap de
+ * propagation (voisin → cellule, en degrés compas) avec la direction où le vent pousse.
+ * Convention météo : `windDirection` = direction d'OÙ vient le vent ⇒ il pousse vers
+ * `windDirection + 180°`. Vent nul ⇒ 1.
+ */
+export function windNeighborFactor(propagationBearingDeg: number, w: Weather): number {
+  const windStrength = Math.min(w.windSpeed / WIND_SPEED_REF, 1) * WIND_COEFF
+  if (windStrength === 0) return 1
+  const pushBearing = w.windDirection + 180
+  const deltaRad = ((propagationBearingDeg - pushBearing) * Math.PI) / 180
+  return Math.max(0, 1 + windStrength * Math.cos(deltaRad))
 }
