@@ -23,12 +23,6 @@
   display: none;
 }
 
-/* Terrain overlay — rendu pixel art sans lissage */
-.sim-terrain img {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: pixelated;
-}
-
 /* ── HUD overlay ── */
 .sim-hud {
   position: absolute;

@@ -83,7 +83,7 @@ export default function App() {
   if (view === 'simulation') {
     return (
       <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}`}>
-        <SimulationView zone={zone} params={params} onExit={() => setView('setup')} />
+        <SimulationView zone={zone} params={params} mapLayer={mapLayer} onExit={() => setView('setup')} />
       </div>
     );
   }

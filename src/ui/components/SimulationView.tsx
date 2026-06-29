@@ -6,7 +6,8 @@ import { hexToPixel } from '../../../engine/hexUtils';
 import type { StateMsg, WorkerOutMsg } from '../../../engine/protocol';
 import { boundsToGrid, latLngToCell, pixelToLatLng, GridGeo } from '../../domain/geoGrid';
 import { buildTerrainRaster, sampleGridTerrain } from '../lib/terrainRaster';
-import type { SimParams, Zone } from '../types/sim';
+import { TILE_LAYERS } from '../lib/tileLayers';
+import type { MapLayer, SimParams, Zone } from '../types/sim';
 import './SimulationView.css';
 
 const STEP_MIN = 3;        // minutes simulées par tick (affichage)
@@ -90,10 +91,11 @@ function hexCorners(geo: GridGeo, q: number, r: number): [number, number][] {
 interface SimulationViewProps {
   zone: Zone | null;
   params: SimParams;
+  mapLayer: MapLayer;
   onExit: () => void;
 }
 
-export default function SimulationView({ zone, params, onExit }: SimulationViewProps) {
+export default function SimulationView({ zone, params, mapLayer, onExit }: SimulationViewProps) {
   const mapElRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const zoneBoundsRef = useRef<L.LatLngBounds | null>(null);
@@ -106,7 +108,6 @@ export default function SimulationView({ zone, params, onExit }: SimulationViewP
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [activeTool, setActiveTool] = useState('feu');
-  const [terrainURL, setTerrainURL] = useState<string | null>(null);
   const [terrainLoading, setTerrainLoading] = useState(false);
 
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -146,24 +147,29 @@ export default function SimulationView({ zone, params, onExit }: SimulationViewP
     );
   };
 
-  // ── Effet 1 : init carte Leaflet ────────────────────────────────────────
+  // ── Effet 1 : init carte Leaflet (vrai fond de carte, verrouillée sur la zone) ──
   useEffect(() => {
     if (!mapElRef.current) return;
     const map = L.map(mapElRef.current, { attributionControl: false, zoomControl: false, maxBoundsViscosity: 1.0 });
     mapRef.current = map;
 
+    const tileConfig = TILE_LAYERS[mapLayer] ?? TILE_LAYERS.plan;
+    L.tileLayer(tileConfig.url, tileConfig.options).addTo(map);
+
     if (zone) {
       const bounds = L.latLngBounds([zone.bounds.south, zone.bounds.west], [zone.bounds.north, zone.bounds.east]);
       zoneBoundsRef.current = bounds;
-      map.fitBounds(bounds, { padding: [50, 50] });
-      map.setMaxBounds(bounds.pad(0.08));
+      map.fitBounds(bounds, { padding: [50, 50], animate: false });
+      // Impossible de quitter la zone sélectionnée : ni en déplaçant la carte,
+      // ni en dézoomant au-delà du cadrage initial.
+      map.setMaxBounds(bounds);
+      map.setMinZoom(map.getZoom());
     } else {
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
       map.setView([46.8, 2.5], 6);
     }
     setMapReady(true);
     return () => { map.remove(); mapRef.current = null; setMapReady(false); };
-  }, [zone]);
+  }, [zone, mapLayer]);
 
   // ── Effet 2 : abonnement moteur + init + raster terrain + remplissage ────
   useEffect(() => {
@@ -185,7 +191,6 @@ export default function SimulationView({ zone, params, onExit }: SimulationViewP
     buildTerrainRaster(zone)
       .then((raster) => {
         if (!alive) return;
-        setTerrainURL(raster.url);
         setTerrainLoading(false);
         window.engine?.send({ type: 'loadTerrain', cells: sampleGridTerrain(raster, geo) });
       })
@@ -195,13 +200,6 @@ export default function SimulationView({ zone, params, onExit }: SimulationViewP
     // le handler après démontage (voir docs/decisions.md).
     return () => { alive = false; };
   }, [zone]);
-
-  // ── Effet 3 : overlay terrain (raster) ──────────────────────────────────
-  useEffect(() => {
-    if (!mapRef.current || !terrainURL || !zoneBoundsRef.current) return;
-    const overlay = L.imageOverlay(terrainURL, zoneBoundsRef.current, { opacity: 1, interactive: false, className: 'sim-terrain' }).addTo(mapRef.current);
-    return () => { overlay.remove(); };
-  }, [terrainURL]);
 
   // ── Effet 4 : couche feu (hexagones ON_FIRE / BURNED) ───────────────────
   useEffect(() => {
