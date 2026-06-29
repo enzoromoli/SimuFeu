@@ -4,12 +4,18 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently -k -n VITE,ELECTRON -c blue,green \"npm:dev:vite\" \"npm:dev:electron\"",
+    "build:engine": "tsc --project engine/tsconfig.json",
+    "watch:engine": "tsc --project engine/tsconfig.json --watch",
     "dev:vite": "vite",
-    "dev:electron": "wait-on tcp:5173 && node scripts/dev-electron.js",
+    "dev:electron": "wait-on tcp:5173 && npm run build:engine && node scripts/dev-electron.js",
+    "dev": "concurrently -k -n VITE,ELECTRON -c blue,green \"npm:dev:vite\" \"npm:dev:electron\"",
     "build:vite": "vite build",
-    "build": "npm run build:vite && electron-builder",
-    "build:win": "npm run build:vite && electron-builder --win --x64"
+    "build": "npm run build:engine && npm run build:vite && electron-builder",
+    "build:win": "npm run build:engine && npm run build:vite && electron-builder --win --x64",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/ui/tsconfig.json",
+    "ingest:demo": "tsx scripts/overpass-demo.ts"
   },
   "build": {
     "appId": "com.simufeu.app",
@@ -23,20 +29,34 @@
     },
     "files": [
       "electron/**/*",
-      "src/dist/**/*",
-      "engine/**/*"
+      "src/ui/dist/**/*",
+      "engine/**/*.js",
+      "engine/package.json"
     ]
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/leaflet": "^1.9.12",
+    "@types/node": "^22.20.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "chokidar": "^5.0.0",
     "concurrently": "^9.2.1",
     "electron": "^35.0.0",
     "electron-builder": "^25.0.0",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
     "vite": "^6.4.3",
+    "vitest": "^4.1.9",
     "wait-on": "^9.0.10"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
+    "osmtogeojson": "3.0.0-beta.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   }

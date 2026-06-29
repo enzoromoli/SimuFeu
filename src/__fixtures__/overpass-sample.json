@@ -1,0 +1,55 @@
+{
+  "version": 0.6,
+  "generator": "fixture",
+  "elements": [
+    {
+      "type": "way",
+      "id": 1,
+      "tags": { "landuse": "forest" },
+      "geometry": [
+        { "lat": 43.10, "lon": 6.00 },
+        { "lat": 43.11, "lon": 6.00 },
+        { "lat": 43.11, "lon": 6.01 },
+        { "lat": 43.10, "lon": 6.01 },
+        { "lat": 43.10, "lon": 6.00 }
+      ]
+    },
+    {
+      "type": "way",
+      "id": 2,
+      "tags": { "natural": "water" },
+      "geometry": [
+        { "lat": 43.12, "lon": 6.02 },
+        { "lat": 43.13, "lon": 6.02 },
+        { "lat": 43.13, "lon": 6.03 },
+        { "lat": 43.12, "lon": 6.03 },
+        { "lat": 43.12, "lon": 6.02 }
+      ]
+    },
+    {
+      "type": "way",
+      "id": 3,
+      "tags": { "waterway": "river" },
+      "geometry": [
+        { "lat": 43.10, "lon": 6.05 },
+        { "lat": 43.12, "lon": 6.06 }
+      ]
+    },
+    {
+      "type": "node",
+      "id": 100,
+      "lat": 43.14,
+      "lon": 6.04,
+      "tags": { "natural": "bare_rock" }
+    },
+    {
+      "type": "way",
+      "id": 4,
+      "tags": { "highway": "track" },
+      "geometry": [
+        { "lat": 43.15, "lon": 6.07 },
+        { "lat": 43.16, "lon": 6.08 }
+      ]
+    }
+  ]
+}

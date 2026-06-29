@@ -21,9 +21,11 @@ function createWindow() {
   });
 
   if (isDev) {
+    // En dev, le renderer est servi par Vite (HMR).
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../src/dist/index.html'));
+    // En prod, on charge le build Vite de la couche UI.
+    mainWindow.loadFile(path.join(__dirname, '../src/ui/dist/index.html'));
   }
 }
 
@@ -43,7 +45,7 @@ ipcMain.on('engine:send', (_event, msg) => {
   if (engineWorker) engineWorker.postMessage(msg);
 });
 
-// Map screenshot: capture then open native save dialog
+// Capture de la carte : screenshot puis dialogue natif d'enregistrement.
 ipcMain.handle('capture:map', async (_event, { rect, defaultName }) => {
   const img = await mainWindow.webContents.capturePage(rect);
   const pngBuffer = img.toPNG();
@@ -64,6 +66,7 @@ ipcMain.handle('capture:map', async (_event, { rect, defaultName }) => {
 app.whenReady().then(() => {
   createWindow();
   startEngineWorker();
+  if (!app.isPackaged) enableHotReload();
 });
 
 app.on('window-all-closed', () => {
@@ -71,3 +74,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+function enableHotReload() {
+  const chokidar = require('chokidar');
+
+  // Le renderer (src/ui) est rechargé par Vite (HMR) — on ne le surveille pas ici.
+  // engine/ → redémarre le worker (les .js sont régénérés par `tsc`/`watch:engine`).
+  chokidar.watch(path.join(__dirname, '../engine'), { ignoreInitial: true })
+    .on('change', () => {
+      if (engineWorker) engineWorker.terminate().then(startEngineWorker);
+    });
+}
