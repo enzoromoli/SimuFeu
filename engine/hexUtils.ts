@@ -26,6 +26,15 @@ export function hexToPixel(q: number, r: number, size: number): { x: number; y: 
   }
 }
 
+/**
+ * Cap compas (0–359°, 0 = Nord, 90 = Est, sens horaire) d'un déplacement hexagonal axial
+ * (dq, dr). Espace pixel pointy-top : +y vers le bas = Sud, donc Nord = −y.
+ */
+export function hexDirectionDeg(dq: number, dr: number): number {
+  const { x, y } = hexToPixel(dq, dr, 1)
+  return ((Math.atan2(x, -y) * 180) / Math.PI + 360) % 360
+}
+
 function cubeRound(q: number, r: number, s: number): { q: number; r: number; s: number } {
   let rq = Math.round(q), rr = Math.round(r), rs = Math.round(s)
   const dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s)

@@ -3,12 +3,13 @@ import { step, placeInitialFire, paintTerrain } from '../simEngine'
 import { CellState, TerrainType, SimState } from '../types'
 import { TERRAIN_CONFIG } from '../terrainConfig'
 import { makeGrid } from '../hexUtils'
+import { NEUTRAL_WEATHER } from '../weather'
 
 const noIgn    = () => 1 // rng qui bloque toute ignition
 const alwaysIgn = () => 0 // rng qui garantit toute ignition
 
 function makeState(radius = 3): SimState {
-  return { cells: makeGrid(radius), tick: 0, phase: 'setup' }
+  return { cells: makeGrid(radius), tick: 0, phase: 'setup', weather: NEUTRAL_WEATHER }
 }
 
 describe('Scénarios fonctionnels', () => {

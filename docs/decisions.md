@@ -44,6 +44,10 @@ Statut : `Prise` (actée, souvent déjà dans le code) ou `À trancher` (voir se
 | 2026-06-28 | Vite : préférer les sources `.ts` aux `.js` du moteur (`resolve.extensions`) | `engine/*.js` (CommonJS, pour le worker Node) cassait l'analyse ESM de Rollup ; le renderer consomme les sources `.ts` | Prise  |
 | 2026-06-28 | UI convertie en **TypeScript** (`src/ui/*.tsx`) ; `tsconfig` UI dédié (lib DOM, jsx react), `typecheck` = root + UI | Lot 3 : tout le code applicatif neuf est typé ; `electron/` reste en JS (frontière) → migration JS→TS close | Prise  |
 | 2026-06-28 | **Double ingestion OSM conservée — on NE converge PAS.** L'UI garde son propre fetch Overpass pour le raster (`src/ui/lib/terrainRaster.ts`) ; la couche `src/app/services` (GeoJSON classé) reste **Node-only** et non câblée au renderer | Les deux ne sont pas redondantes (raster d'affichage vs GeoJSON classifié pour scripts/tests) ; le cache `fs` de `src/app/services` est **inaccessible au renderer** (`contextIsolation`) ; converger = nouvelle feature (cache IndexedDB + changement de rendu) à risque pour un gain surtout cosmétique → statu quo assumé | Prise  |
+| 2026-06-29 | **Météo stockée dans `SimState.weather`** (et non dans `HistoryManager`) | Transite naturellement par `step(state, rng)` → `computeIgnitionProb` sans casser la signature pure ; un changement passe par `applyAndInvalidate` (invalidation des ticks > t gratuite, cohérent avec `paint`/`ignite`) | Prise  |
+| 2026-06-29 | **Message worker `setWeather { weather }`** (plutôt qu'étendre `init`) ; `init`/`reset` partent en `NEUTRAL_WEATHER` | Prépare l'outil « vent » de P2 et la mise à jour live de la météo ; sépare la géométrie (`init`) de la météo | Prise  |
+| 2026-06-29 | **Convention vent** : `windDirection` = direction d'OÙ vient le vent (convention météo/Open-Meteo) dans le code ; le feu pousse vers `windDirection + 180°`. La flèche de l'UI est retournée (affichage seul) pour pointer là où le vent pousse | Cohérence avec les données Open-Meteo déjà récupérées ; flèche intuitive sans altérer la donnée | Prise  |
+| 2026-06-29 | **Vitest projet `node` : préférer les sources `.ts`** aux `.js` compilés du moteur (`resolve.extensions`) | Sans ça, les tests tournaient sur `engine/*.js` périmés (artefacts de `build:engine`) ; aligné avec `vite.config.js` (décision 2026-06-28) | Prise  |
 
 ## À trancher
 
@@ -57,6 +61,14 @@ qu'elle est arrêtée, puis la déplacer vers le tableau ci-dessus).
   **non classés** (`#e8e4d8`) vers `GRASSLAND` (inflammable) — à passer en terrain ininflammable ?
 - **Coordonnées de la grille hexagonale** : offset ou axiales ?
 - **Durée de combustion** : combien de ticks avant qu'une cellule en feu passe à « brûlée » ?
+- **Coefficients d'équilibrage météo** (cf. `engine/weather.ts`, feature `weather-propagation`) :
+  valeurs **proposées**, à valider/ajuster sur des cas réels. Facteur d'ignition =
+  `(1 + (T−20)/40) · (1 + (40−humidité)/120) · (1 + (12−combustible)/60)` (chaque sous-facteur
+  vaut 1 à la météo neutre) ; durée de combustion = `burnDuration · (1 + combustible/50)` ;
+  vent = `1 + windStrength·cos(Δ)` avec `windStrength = min(windSpeed/50, 1)·0.9`. Sont à
+  trancher : l'intensité du vent (coef 0.9, vitesse de référence 50 km/h), la sensibilité
+  température/humidité, et si l'humidité du combustible doit **allonger** la combustion
+  (smoldering, choix actuel) ou plutôt la raccourcir/empêcher l'ignition.
 - **Migration JS → TypeScript** : le **nouveau** code est en TS (décision 2026-06-25) ;
   `src/renderer.js` (stub) est supprimé et l'UI portée passe en `.tsx` (lot 3, décision
   2026-06-28) ; **`electron/` reste volontairement en JS** (décision 2026-06-28). Plus de

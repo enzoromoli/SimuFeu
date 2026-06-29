@@ -1,39 +1,48 @@
-import { CellState, TerrainType, Cell, SimState } from './types'
+import { CellState, TerrainType, Cell, SimState, Weather } from './types'
 import { TERRAIN_CONFIG, PRESSURE_COEFF, NEIGHBOR_FIRE_WEIGHT } from './terrainConfig'
-import { getNeighbors } from './hexUtils'
+import { getNeighbors, hexDirectionDeg } from './hexUtils'
+import { weatherIgnitionFactor, effectiveBurnDuration, windNeighborFactor } from './weather'
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v))
 }
 
-export function computeIgnitionProb(cell: Cell, neighbors: Cell[]): number {
+export function computeIgnitionProb(cell: Cell, neighbors: Cell[], weather: Weather): number {
   if (cell.state !== CellState.INTACT) return 0
   const cfg = TERRAIN_CONFIG[cell.terrain]
   if (cfg.flammability === 0) return 0
 
-  const fireCount = neighbors.filter(n => n.state === CellState.ON_FIRE).length
-  if (fireCount === 0) return 0
+  // Somme des voisins en feu, chacun pondéré par son alignement au vent (cap voisin → cellule).
+  // Vent nul ⇒ chaque voisin compte exactement 1 (équivalent au comptage simple historique).
+  let weightedFire = 0
+  for (const n of neighbors) {
+    if (n.state !== CellState.ON_FIRE) continue
+    const bearing = hexDirectionDeg(cell.q - n.q, cell.r - n.r)
+    weightedFire += windNeighborFactor(bearing, weather)
+  }
+  if (weightedFire === 0) return 0
 
-  // TODO: wind — ajouter ici un multiplicateur directionnel selon le vecteur vent + direction du voisin
   // TODO: ember — ajouter ici une probabilité d'ignition longue portée depuis des cellules distantes
 
   return clamp(
     cfg.flammability
-    * (fireCount * (NEIGHBOR_FIRE_WEIGHT + cfg.spreadBonus))
-    * (1 + cell.ignitionPressure * PRESSURE_COEFF),
+    * (weightedFire * (NEIGHBOR_FIRE_WEIGHT + cfg.spreadBonus))
+    * (1 + cell.ignitionPressure * PRESSURE_COEFF)
+    * weatherIgnitionFactor(weather),
     0, 1
   )
 }
 
 export function step(state: SimState, rng: () => number): SimState {
-  const { cells, tick } = state
+  const { cells, tick, weather } = state
   const newCells = new Map<string, Cell>()
 
   for (const [id, cell] of cells) {
     const cfg = TERRAIN_CONFIG[cell.terrain]
 
     if (cell.state === CellState.ON_FIRE) {
-      const burned = cell.fireTick !== null && tick >= cell.fireTick + cfg.burnDuration
+      const burnDuration = effectiveBurnDuration(cfg.burnDuration, weather)
+      const burned = cell.fireTick !== null && tick >= cell.fireTick + burnDuration
       newCells.set(id, { ...cell, state: burned ? CellState.BURNED : CellState.ON_FIRE })
       continue
     }
@@ -53,14 +62,14 @@ export function step(state: SimState, rng: () => number): SimState {
       continue
     }
 
-    if (rng() < computeIgnitionProb(cell, neighbors)) {
+    if (rng() < computeIgnitionProb(cell, neighbors, weather)) {
       newCells.set(id, { ...cell, state: CellState.ON_FIRE, fireTick: tick, ignitionPressure: 0 })
     } else {
       newCells.set(id, { ...cell, ignitionPressure: cell.ignitionPressure + 1 })
     }
   }
 
-  return { cells: newCells, tick: tick + 1, phase: state.phase }
+  return { cells: newCells, tick: tick + 1, phase: state.phase, weather }
 }
 
 export function placeInitialFire(id: string, state: SimState): SimState {

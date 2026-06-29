@@ -29,8 +29,17 @@ export interface Cell {
 
 export type SimPhase = 'setup' | 'running' | 'paused'
 
+export interface Weather {
+  windDirection: number // ° météo (0–359) : direction d'OÙ vient le vent (convention Open-Meteo)
+  windSpeed:     number // km/h (vent moyen)
+  temperature:   number // °C
+  humidity:      number // % humidité de l'air (0–100)
+  fuelMoisture:  number // % humidité du combustible (0–50)
+}
+
 export interface SimState {
-  cells: Map<string, Cell>
-  tick:  number
-  phase: SimPhase
+  cells:   Map<string, Cell>
+  tick:    number
+  phase:   SimPhase
+  weather: Weather
 }
