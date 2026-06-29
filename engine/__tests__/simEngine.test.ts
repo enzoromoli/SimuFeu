@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { computeIgnitionProb, step, placeInitialFire, paintTerrain } from '../simEngine'
 import { CellState, TerrainType, Cell, SimState } from '../types'
 import { TERRAIN_CONFIG } from '../terrainConfig'
+import { NEUTRAL_WEATHER } from '../weather'
 import { makeGrid } from '../hexUtils'
+
+// Météo neutre par défaut pour construire les états de test.
+const W = NEUTRAL_WEATHER
 
 function makeCell(overrides: Partial<Cell> & { id: string }): Cell {
   return {
@@ -16,7 +20,7 @@ function makeCell(overrides: Partial<Cell> & { id: string }): Cell {
 }
 
 function makeState(radius = 3): SimState {
-  return { cells: makeGrid(radius), tick: 0, phase: 'setup' }
+  return { cells: makeGrid(radius), tick: 0, phase: 'setup', weather: NEUTRAL_WEATHER }
 }
 
 // ─── computeIgnitionProb ─────────────────────────────────────────────────────
@@ -103,7 +107,7 @@ describe('step', () => {
     const grid = makeGrid(2)
     const center = grid.get('0,0,0')!
     grid.set('0,0,0', { ...center, state: CellState.ON_FIRE, fireTick: 0, terrain: TerrainType.GRASSLAND })
-    let state: SimState = { cells: grid, tick: 0, phase: 'running' }
+    let state: SimState = { cells: grid, tick: 0, phase: 'running', weather: W }
 
     // La condition est : tick >= fireTick + burnDuration
     // Avec burnDuration=2 et fireTick=0, la cellule reste en feu pour tick=0 et tick=1
@@ -121,14 +125,14 @@ describe('step', () => {
   it('les cellules BURNED restent BURNED', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, state: CellState.BURNED })
-    const result = step({ cells: grid, tick: 0, phase: 'running' }, () => 0)
+    const result = step({ cells: grid, tick: 0, phase: 'running', weather: W }, () => 0)
     expect(result.cells.get('0,0,0')!.state).toBe(CellState.BURNED)
   })
 
   it('une cellule INTACT sans voisin en feu remet ignitionPressure à 0', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, ignitionPressure: 5 })
-    const result = step({ cells: grid, tick: 0, phase: 'running' }, () => 0)
+    const result = step({ cells: grid, tick: 0, phase: 'running', weather: W }, () => 0)
     expect(result.cells.get('0,0,0')!.ignitionPressure).toBe(0)
   })
 
@@ -162,7 +166,7 @@ describe('placeInitialFire', () => {
   it('ne fait rien sur un terrain non-inflammable (WATER)', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, terrain: TerrainType.WATER })
-    const state: SimState = { cells: grid, tick: 0, phase: 'setup' }
+    const state: SimState = { cells: grid, tick: 0, phase: 'setup', weather: W }
     expect(placeInitialFire('0,0,0', state).cells.get('0,0,0')!.state).toBe(CellState.INTACT)
   })
 
@@ -185,14 +189,14 @@ describe('paintTerrain', () => {
   it('remet l\'état de la cellule à INTACT', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, state: CellState.BURNED })
-    const state: SimState = { cells: grid, tick: 0, phase: 'setup' }
+    const state: SimState = { cells: grid, tick: 0, phase: 'setup', weather: W }
     expect(paintTerrain('0,0,0', TerrainType.WATER, state).cells.get('0,0,0')!.state).toBe(CellState.INTACT)
   })
 
   it('remet fireTick à null et ignitionPressure à 0', () => {
     const grid = makeGrid(1)
     grid.set('0,0,0', { ...grid.get('0,0,0')!, fireTick: 3, ignitionPressure: 5 })
-    const result = paintTerrain('0,0,0', TerrainType.SCRUB, { cells: grid, tick: 0, phase: 'setup' })
+    const result = paintTerrain('0,0,0', TerrainType.SCRUB, { cells: grid, tick: 0, phase: 'setup', weather: W })
     expect(result.cells.get('0,0,0')!.fireTick).toBeNull()
     expect(result.cells.get('0,0,0')!.ignitionPressure).toBe(0)
   })

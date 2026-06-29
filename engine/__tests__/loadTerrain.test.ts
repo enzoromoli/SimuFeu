@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { loadTerrains, placeInitialFire } from '../simEngine'
 import { createHistoryManager } from '../historyManager'
 import { makeGrid } from '../hexUtils'
+import { NEUTRAL_WEATHER } from '../weather'
 import { CellState, TerrainType, SimState } from '../types'
 
 function makeState(radius = 2): SimState {
-  return { cells: makeGrid(radius), tick: 0, phase: 'setup' }
+  return { cells: makeGrid(radius), tick: 0, phase: 'setup', weather: NEUTRAL_WEATHER }
 }
 
 // Les 6 voisins du centre (anneau intérieur).

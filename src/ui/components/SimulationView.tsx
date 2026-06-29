@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CellState } from '../../../engine/types';
+import type { Weather } from '../../../engine/types';
 import { hexToPixel } from '../../../engine/hexUtils';
 import type { StateMsg, WorkerOutMsg } from '../../../engine/protocol';
 import { boundsToGrid, latLngToCell, pixelToLatLng, GridGeo } from '../../domain/geoGrid';
@@ -73,6 +74,17 @@ function formatHHMM(totalMin: number): string {
 function degToCardinalFR(deg: number): string {
   const dirs = ['Nord', 'Nord-Est', 'Est', 'Sud-Est', 'Sud', 'Sud-Ouest', 'Ouest', 'Nord-Ouest'];
   return dirs[Math.round((((deg % 360) + 360) % 360) / 45) % 8] ?? 'Nord';
+}
+
+// Extrait du SimParams les 5 champs météo consommés par le moteur (convention météo conservée).
+function paramsToWeather(p: SimParams): Weather {
+  return {
+    windDirection: p.windDirection,
+    windSpeed:     p.windSpeed,
+    temperature:   p.temperature,
+    humidity:      p.humidity,
+    fuelMoisture:  p.fuelMoisture,
+  };
 }
 
 // Les 6 coins (lat/lon) d'une cellule hexagonale pointy-top.
@@ -180,6 +192,7 @@ export default function SimulationView({ zone, params, onExit }: SimulationViewP
     };
     window.engine?.onMessage(handler);
     window.engine?.send({ type: 'init', radius: RADIUS, seed: SEED });
+    // La météo est envoyée juste après par l'effet 2b (setWeather), puis à chaque changement.
 
     setTerrainLoading(true);
     buildTerrainRaster(zone)
@@ -195,6 +208,13 @@ export default function SimulationView({ zone, params, onExit }: SimulationViewP
     // le handler après démontage (voir docs/decisions.md).
     return () => { alive = false; };
   }, [zone]);
+
+  // ── Effet 2b : mise à jour de la météo moteur quand les paramètres changent ──
+  // (Invalide les ticks > tick courant, régénérés à la demande.)
+  useEffect(() => {
+    if (!zone) return;
+    window.engine?.send({ type: 'setWeather', weather: paramsToWeather(params) });
+  }, [zone, params]);
 
   // ── Effet 3 : overlay terrain (raster) ──────────────────────────────────
   useEffect(() => {

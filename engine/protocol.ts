@@ -1,7 +1,7 @@
 // Contrat de communication UI ↔ worker moteur.
 // Module de TYPES uniquement (aucune dépendance Node) : importable côté worker
 // (engine/worker.ts) comme côté renderer (src/ui, src/domain).
-import { Cell, SimPhase, SimState, TerrainType } from './types'
+import { Cell, SimPhase, SimState, TerrainType, Weather } from './types'
 import { TerrainConfig } from './terrainConfig'
 
 /** Terrain d'une cellule, pour le remplissage en masse. */
@@ -17,6 +17,7 @@ export type WorkerInMsg =
   | { type: 'ignite';      id: string }
   | { type: 'paint';       id: string; terrain: TerrainType }
   | { type: 'loadTerrain'; cells: TerrainPatch[] }
+  | { type: 'setWeather';  weather: Weather }
   | { type: 'setPhase';    phase: SimState['phase'] }
   | { type: 'reset';       radius?: number; seed?: number }
 

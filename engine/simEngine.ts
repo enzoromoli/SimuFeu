@@ -26,7 +26,7 @@ export function computeIgnitionProb(cell: Cell, neighbors: Cell[]): number {
 }
 
 export function step(state: SimState, rng: () => number): SimState {
-  const { cells, tick } = state
+  const { cells, tick, weather } = state
   const newCells = new Map<string, Cell>()
 
   for (const [id, cell] of cells) {
@@ -60,7 +60,7 @@ export function step(state: SimState, rng: () => number): SimState {
     }
   }
 
-  return { cells: newCells, tick: tick + 1, phase: state.phase }
+  return { cells: newCells, tick: tick + 1, phase: state.phase, weather }
 }
 
 export function placeInitialFire(id: string, state: SimState): SimState {

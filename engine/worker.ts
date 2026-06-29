@@ -3,6 +3,7 @@ import { makeGrid } from './hexUtils'
 import { placeInitialFire, paintTerrain, loadTerrains } from './simEngine'
 import { createHistoryManager, HistoryManager } from './historyManager'
 import { TERRAIN_CONFIG } from './terrainConfig'
+import { NEUTRAL_WEATHER } from './weather'
 import { SimState } from './types'
 import { WorkerInMsg } from './protocol'
 
@@ -11,10 +12,12 @@ const DEFAULT_SEED   = 0xdeadbeef
 
 type InMsg = WorkerInMsg
 
-let hm: HistoryManager = createHistoryManager(
-  { cells: makeGrid(DEFAULT_RADIUS), tick: 0, phase: 'setup' },
-  DEFAULT_SEED
-)
+// État de départ neutre : la météo réelle arrive ensuite via le message `setWeather`.
+function initialState(radius: number): SimState {
+  return { cells: makeGrid(radius), tick: 0, phase: 'setup', weather: NEUTRAL_WEATHER }
+}
+
+let hm: HistoryManager = createHistoryManager(initialState(DEFAULT_RADIUS), DEFAULT_SEED)
 let currentTick = 0
 
 function serializeState(s: SimState, tickMax: number) {
@@ -41,7 +44,7 @@ parentPort!.on('message', (msg: InMsg) => {
     case 'init': {
       const radius = msg.radius ?? DEFAULT_RADIUS
       const seed   = msg.seed   ?? DEFAULT_SEED
-      hm = createHistoryManager({ cells: makeGrid(radius), tick: 0, phase: 'setup' }, seed)
+      hm = createHistoryManager(initialState(radius), seed)
       currentTick = 0
       sendCurrentState()
       break
@@ -84,6 +87,12 @@ parentPort!.on('message', (msg: InMsg) => {
       break
     }
 
+    case 'setWeather': {
+      hm.applyAndInvalidate(currentTick, s => ({ ...s, weather: msg.weather }))
+      sendCurrentState()
+      break
+    }
+
     case 'setPhase': {
       hm.applyAndInvalidate(currentTick, s => ({ ...s, phase: msg.phase }))
       sendCurrentState()
@@ -93,7 +102,7 @@ parentPort!.on('message', (msg: InMsg) => {
     case 'reset': {
       const radius = msg.radius ?? DEFAULT_RADIUS
       const seed   = msg.seed   ?? DEFAULT_SEED
-      hm = createHistoryManager({ cells: makeGrid(radius), tick: 0, phase: 'setup' }, seed)
+      hm = createHistoryManager(initialState(radius), seed)
       currentTick = 0
       sendCurrentState()
       break
