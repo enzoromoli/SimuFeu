@@ -1,6 +1,6 @@
 import { CellState, TerrainType, Cell, SimState } from './types'
 import { TERRAIN_CONFIG, PRESSURE_COEFF, NEIGHBOR_FIRE_WEIGHT } from './terrainConfig'
-import { getNeighbors } from './hexUtils'
+import { getNeighbors } from './gridUtils'
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v))

@@ -1,18 +1,19 @@
 import { parentPort } from 'worker_threads'
-import { makeGrid } from './hexUtils'
+import { makeGrid } from './gridUtils'
 import { placeInitialFire, paintTerrain, loadTerrains } from './simEngine'
 import { createHistoryManager, HistoryManager } from './historyManager'
 import { TERRAIN_CONFIG } from './terrainConfig'
 import { SimState } from './types'
 import { WorkerInMsg } from './protocol'
 
-const DEFAULT_RADIUS = 12
-const DEFAULT_SEED   = 0xdeadbeef
+const DEFAULT_RADIUS_X = 20
+const DEFAULT_RADIUS_Y = 20
+const DEFAULT_SEED     = 0xdeadbeef
 
 type InMsg = WorkerInMsg
 
 let hm: HistoryManager = createHistoryManager(
-  { cells: makeGrid(DEFAULT_RADIUS), tick: 0, phase: 'setup' },
+  { cells: makeGrid(DEFAULT_RADIUS_X, DEFAULT_RADIUS_Y), tick: 0, phase: 'setup' },
   DEFAULT_SEED
 )
 let currentTick = 0
@@ -39,9 +40,10 @@ parentPort!.on('message', (msg: InMsg) => {
   switch (msg.type) {
 
     case 'init': {
-      const radius = msg.radius ?? DEFAULT_RADIUS
-      const seed   = msg.seed   ?? DEFAULT_SEED
-      hm = createHistoryManager({ cells: makeGrid(radius), tick: 0, phase: 'setup' }, seed)
+      const radiusX = msg.radiusX ?? DEFAULT_RADIUS_X
+      const radiusY = msg.radiusY ?? DEFAULT_RADIUS_Y
+      const seed    = msg.seed    ?? DEFAULT_SEED
+      hm = createHistoryManager({ cells: makeGrid(radiusX, radiusY), tick: 0, phase: 'setup' }, seed)
       currentTick = 0
       sendCurrentState()
       break
@@ -91,9 +93,10 @@ parentPort!.on('message', (msg: InMsg) => {
     }
 
     case 'reset': {
-      const radius = msg.radius ?? DEFAULT_RADIUS
-      const seed   = msg.seed   ?? DEFAULT_SEED
-      hm = createHistoryManager({ cells: makeGrid(radius), tick: 0, phase: 'setup' }, seed)
+      const radiusX = msg.radiusX ?? DEFAULT_RADIUS_X
+      const radiusY = msg.radiusY ?? DEFAULT_RADIUS_Y
+      const seed    = msg.seed    ?? DEFAULT_SEED
+      hm = createHistoryManager({ cells: makeGrid(radiusX, radiusY), tick: 0, phase: 'setup' }, seed)
       currentTick = 0
       sendCurrentState()
       break

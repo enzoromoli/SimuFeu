@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CellState } from '../../../engine/types';
-import { hexToPixel } from '../../../engine/hexUtils';
+import { hexToPixel } from '../../../engine/gridUtils';
 import type { StateMsg, WorkerOutMsg } from '../../../engine/protocol';
 import { boundsToGrid, latLngToCell, pixelToLatLng, GridGeo } from '../../domain/geoGrid';
 import { buildTerrainRaster, sampleGridTerrain } from '../lib/terrainRaster';
@@ -12,11 +12,21 @@ import './SimulationView.css';
 
 const STEP_MIN = 3;        // minutes simulées par tick (affichage)
 const SPEEDS = [1, 2, 5];
-const RADIUS = 12;         // rayon de la grille hexagonale
+const TARGET_CELLS = 2500; // budget de cellules visé, quelle que soit la forme de la zone
+const MIN_AXIS_RADIUS = 8;
+const MAX_AXIS_RADIUS = 60;
+const DEFAULT_RADIUS = 20; // utilisé si aucune zone n'est sélectionnée
 const SEED = 0xdeadbeef;   // graine déterministe de la simulation
 
 const FIRE_COLOR = '#f5921e';
 const BURNED_COLOR = '#c06228';
+
+const FLAME_ICON = L.divIcon({
+  className: 'sim-flame-icon',
+  html: '🔥',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
 
 const TOOLS = [
   { id: 'feu', label: 'Feu', icon: (
@@ -86,6 +96,23 @@ function hexCorners(geo: GridGeo, q: number, r: number): [number, number][] {
     pts.push([lat, lng]);
   }
   return pts;
+}
+
+// Détermine la résolution (demi-largeur/demi-hauteur, en nombre de colonnes/lignes
+// hexagonales) pour un budget de cellules ~constant, quelle que soit la forme de la
+// zone : la grille (rectangle de cellules hexagonales) suit l'aspect réel du terrain
+// (pas seulement en degrés).
+function computeGridRadius(zone: Zone | null): { radiusX: number; radiusY: number } {
+  if (!zone) return { radiusX: DEFAULT_RADIUS, radiusY: DEFAULT_RADIUS };
+  const { north, south, east, west } = zone.bounds;
+  const avgLatRad = ((north + south) / 2) * (Math.PI / 180);
+  const heightM = (north - south) * 111_320;
+  const widthM = (east - west) * 111_320 * Math.cos(avgLatRad);
+  const aspect = Math.max(widthM, 1) / Math.max(heightM, 1);
+  const rows = Math.sqrt(TARGET_CELLS / aspect);
+  const cols = aspect * rows;
+  const clamp = (v: number) => Math.round(Math.max(MIN_AXIS_RADIUS, Math.min(MAX_AXIS_RADIUS, v / 2)));
+  return { radiusX: clamp(cols), radiusY: clamp(rows) };
 }
 
 interface SimulationViewProps {
@@ -164,6 +191,7 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
       // ni en dézoomant au-delà du cadrage initial.
       map.setMaxBounds(bounds);
       map.setMinZoom(map.getZoom());
+      L.rectangle(bounds, { className: 'sim-zone-outline', interactive: false }).addTo(map);
     } else {
       map.setView([46.8, 2.5], 6);
     }
@@ -175,7 +203,8 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
   useEffect(() => {
     if (!zone) return;
     let alive = true;
-    const geo = boundsToGrid(zone.bounds, RADIUS);
+    const { radiusX, radiusY } = computeGridRadius(zone);
+    const geo = boundsToGrid(zone.bounds, radiusX, radiusY);
     geoRef.current = geo;
 
     const handler = (msg: WorkerOutMsg) => {
@@ -185,7 +214,7 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
       lastTickRef.current = msg.tick;
     };
     window.engine?.onMessage(handler);
-    window.engine?.send({ type: 'init', radius: RADIUS, seed: SEED });
+    window.engine?.send({ type: 'init', radiusX, radiusY, seed: SEED });
 
     setTerrainLoading(true);
     buildTerrainRaster(zone)
@@ -201,20 +230,27 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
     return () => { alive = false; };
   }, [zone]);
 
-  // ── Effet 4 : couche feu (hexagones ON_FIRE / BURNED) ───────────────────
+  // ── Effet 4 : grille hexagonale (terrain + feu / brûlé par-dessus) ──────
   useEffect(() => {
     const map = mapRef.current, geo = geoRef.current;
-    if (!map || !geo || !mapReady) return;
+    if (!map || !geo || !mapReady || !engineState) return;
     const group = L.layerGroup();
     for (const cell of cells) {
-      if (cell.state === CellState.INTACT) continue;
       const onFireCell = cell.state === CellState.ON_FIRE;
+      const burnedCell  = cell.state === CellState.BURNED;
+      const fillColor = onFireCell ? FIRE_COLOR : burnedCell ? BURNED_COLOR : engineState.terrainConfig[cell.terrain].color;
+      const fillOpacity = onFireCell ? 0.78 : burnedCell ? 0.55 : 0.45;
       L.polygon(hexCorners(geo, cell.q, cell.r), {
         stroke: false,
-        fillColor: onFireCell ? FIRE_COLOR : BURNED_COLOR,
-        fillOpacity: onFireCell ? 0.78 : 0.55,
+        fillColor,
+        fillOpacity,
         interactive: false,
       }).addTo(group);
+      if (onFireCell) {
+        const center = hexToPixel(cell.q, cell.r, 1);
+        const { lat, lng } = pixelToLatLng(geo, center.x, center.y);
+        L.marker([lat, lng], { icon: FLAME_ICON, interactive: false }).addTo(group);
+      }
     }
     group.addTo(map);
     return () => { group.remove(); };

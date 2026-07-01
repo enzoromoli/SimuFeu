@@ -1,5 +1,6 @@
 import { CellState, TerrainType, Cell } from './types'
 
+// 6 directions hexagonales, coordonnées cubiques (q+r+s=0).
 const AXIAL_DIRS: [number, number, number][] = [
   [1, 0, -1], [1, -1, 0], [0, -1, 1],
   [-1, 0, 1], [-1, 1, 0], [0, 1, -1],
@@ -42,12 +43,31 @@ export function pixelToHex(px: number, py: number, size: number): { q: number; r
   return cubeRound(q, r, -q - r)
 }
 
-export function makeGrid(radius: number): Map<string, Cell> {
+// Coordonnées "offset-row" (col, row) <-> axiales (q, r, s). row = r ; chaque
+// ligne impaire décale col d'une demi-largeur d'hexagone (voir makeGrid).
+export function offsetToAxial(col: number, row: number): { q: number; r: number; s: number } {
+  const q = col - Math.floor(row / 2)
+  const r = row
+  // +0 normalise -0 → 0 (peut survenir quand q et r sont tous deux nuls)
+  return { q, r, s: -q - r + 0 }
+}
+
+export function axialToOffset(q: number, r: number): { col: number; row: number } {
+  return { col: q + Math.floor(r / 2), row: r }
+}
+
+// Grille d'hexagones pointy-top disposés en (2*radiusX+1) colonnes par
+// (2*radiusY+1) lignes, en coordonnées offset-row converties en axiales.
+// Le décalage d'une ligne sur deux compense le cisaillement des axes cubiques :
+// l'ensemble des cellules forme un vrai rectangle en pixels (contrairement à
+// une grille cubique de rayon fixe, qui laisse des coins manquants). La forme
+// de chaque cellule reste hexagonale ; seule la *zone couverte* est rectangulaire.
+// Voir docs/decisions.md.
+export function makeGrid(radiusX: number, radiusY: number): Map<string, Cell> {
   const cells = new Map<string, Cell>()
-  for (let q = -radius; q <= radius; q++) {
-    for (let r = -radius; r <= radius; r++) {
-      const s = -q - r
-      if (Math.abs(s) > radius) continue
+  for (let row = -radiusY; row <= radiusY; row++) {
+    for (let col = -radiusX; col <= radiusX; col++) {
+      const { q, r, s } = offsetToAxial(col, row)
       const id = cellId(q, r, s)
       cells.set(id, {
         id, q, r, s,
