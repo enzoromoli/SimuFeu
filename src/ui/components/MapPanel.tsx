@@ -74,6 +74,9 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       attributionControl: false,
+      minZoom: 3,
+      maxBounds: L.latLngBounds([-85, -180], [85, 180]),
+      maxBoundsViscosity: 1.0,
     });
     mapRef.current = map;
 

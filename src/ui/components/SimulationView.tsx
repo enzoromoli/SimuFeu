@@ -6,6 +6,7 @@ import { hexToPixel } from '../../../engine/gridUtils';
 import type { StateMsg, WorkerOutMsg } from '../../../engine/protocol';
 import { boundsToGrid, latLngToCell, pixelToLatLng, GridGeo } from '../../domain/geoGrid';
 import { buildTerrainRaster, sampleGridTerrain } from '../lib/terrainRaster';
+import { fetchFuelTanks } from '../lib/fuelTanks';
 import { TILE_LAYERS } from '../lib/tileLayers';
 import type { MapLayer, SimParams, Zone } from '../types/sim';
 import './SimulationView.css';
@@ -125,10 +126,12 @@ interface SimulationViewProps {
 export default function SimulationView({ zone, params, mapLayer, onExit }: SimulationViewProps) {
   const mapElRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const zoneBoundsRef = useRef<L.LatLngBounds | null>(null);
   const geoRef = useRef<GridGeo | null>(null);
   const isPlayingRef = useRef(false);
   const lastTickRef = useRef(0);
+  const tanksRef = useRef<{ lat: number; lng: number; cellId: string }[]>([]);
 
   const [mapReady, setMapReady] = useState(false);
   const [engineState, setEngineState] = useState<StateMsg | null>(null);
@@ -136,8 +139,15 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
   const [speed, setSpeed] = useState(1);
   const [activeTool, setActiveTool] = useState('feu');
   const [terrainLoading, setTerrainLoading] = useState(false);
+  const [layer, setLayer] = useState<MapLayer>(mapLayer);
+  const [panelsHidden, setPanelsHidden] = useState(false);
+  const [capturing, setCapturing] = useState(false);
 
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+  // Panneaux masqués (bouton œil) et/ou capture d'écran en cours : dans les
+  // deux cas, on ne garde que la carte + le feu, sans le HUD d'infos.
+  const hideHud = panelsHidden || capturing;
 
   // ── Données dérivées de l'état moteur ───────────────────────────────────
   const tick = engineState?.tick ?? 0;
@@ -167,11 +177,18 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
   const handleDownload = async () => {
     const el = mapElRef.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    await window.capture?.map(
-      { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) },
-      params.simName || 'zone',
-    );
+    setCapturing(true);
+    // Attend que le HUD ait bien disparu du rendu avant de capturer l'écran.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    try {
+      const r = el.getBoundingClientRect();
+      await window.capture?.map(
+        { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) },
+        params.simName || 'zone',
+      );
+    } finally {
+      setCapturing(false);
+    }
   };
 
   // ── Effet 1 : init carte Leaflet (vrai fond de carte, verrouillée sur la zone) ──
@@ -179,9 +196,6 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
     if (!mapElRef.current) return;
     const map = L.map(mapElRef.current, { attributionControl: false, zoomControl: false, maxBoundsViscosity: 1.0 });
     mapRef.current = map;
-
-    const tileConfig = TILE_LAYERS[mapLayer] ?? TILE_LAYERS.plan;
-    L.tileLayer(tileConfig.url, tileConfig.options).addTo(map);
 
     if (zone) {
       const bounds = L.latLngBounds([zone.bounds.south, zone.bounds.west], [zone.bounds.north, zone.bounds.east]);
@@ -196,8 +210,17 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
       map.setView([46.8, 2.5], 6);
     }
     setMapReady(true);
-    return () => { map.remove(); mapRef.current = null; setMapReady(false); };
-  }, [zone, mapLayer]);
+    return () => { map.remove(); mapRef.current = null; tileLayerRef.current = null; setMapReady(false); };
+  }, [zone]);
+
+  // ── Effet 1b : fond de carte (plan / satellite), indépendant de l'init carte ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
+    const tileConfig = TILE_LAYERS[layer] ?? TILE_LAYERS.plan;
+    tileLayerRef.current = L.tileLayer(tileConfig.url, tileConfig.options).addTo(map);
+  }, [layer, mapReady]);
 
   // ── Effet 2 : abonnement moteur + init + raster terrain + remplissage ────
   useEffect(() => {
@@ -206,6 +229,7 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
     const { radiusX, radiusY } = computeGridRadius(zone);
     const geo = boundsToGrid(zone.bounds, radiusX, radiusY);
     geoRef.current = geo;
+    tanksRef.current = [];
 
     const handler = (msg: WorkerOutMsg) => {
       if (!alive || msg.type !== 'state') return;
@@ -224,6 +248,24 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
         window.engine?.send({ type: 'loadTerrain', cells: sampleGridTerrain(raster, geo) });
       })
       .catch(() => { if (alive) setTerrainLoading(false); });
+
+    // Tanks de carburant de la zone : purement visuel (animation d'explosion), voir
+    // docs/decisions.md — aucun impact sur la simulation elle-même.
+    // Overpass renvoie un `way` dès qu'un seul de ses nœuds touche la bbox demandée ;
+    // son centroïde (`out center`) peut alors tomber EN DEHORS de la zone dessinée
+    // (bâtiment qui déborde) — on écarte ces tanks hors-zone. Pour les tanks conservés,
+    // on garde leur lat/lng RÉEL (pas le centre de la cellule hexagonale) : l'explosion
+    // doit apparaître pile sur le réservoir, pas juste "dans la bonne cellule".
+    fetchFuelTanks(zone.bounds).then((tanks) => {
+      if (!alive) return;
+      const { north, south, east, west } = zone.bounds;
+      const inZone = tanks.filter((t) => t.lat >= south && t.lat <= north && t.lng >= west && t.lng <= east);
+      tanksRef.current = inZone.map((t) => ({
+        lat: t.lat,
+        lng: t.lng,
+        cellId: latLngToCell(geo, t.lat, t.lng).id,
+      }));
+    });
 
     // window.engine n'expose pas de désabonnement : le flag `alive` neutralise
     // le handler après démontage (voir docs/decisions.md).
@@ -256,6 +298,35 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
     return () => { group.remove(); };
   }, [engineState, mapReady]);
 
+  // ── Effet : animation d'explosion quand le feu atteint un tank de carburant ──
+  // Purement visuel — ne modifie ni l'état moteur ni la propagation du feu.
+  // L'explosion se joue au tick où la cellule DEVIENT visiblement en feu, c.-à-d.
+  // fireTick + 1 : le moteur enregistre fireTick au tick courant du step, mais la
+  // cellule n'apparaît ON_FIRE que dans l'état du tick suivant (voir simEngine.ts).
+  // fireTick est porté par l'état de chaque tick, donc l'animation se rejoue
+  // fidèlement en avance/recul/saut (replay) sans aucun état mutable côté UI.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !engineState) return;
+    const cellById = new Map(engineState.cells.map((c) => [c.id, c]));
+    for (const tank of tanksRef.current) {
+      const cell = cellById.get(tank.cellId);
+      if (!cell || cell.fireTick === null || cell.fireTick + 1 !== engineState.tick) continue;
+      // L'emoji est enveloppé dans un <span> animé : Leaflet positionne l'élément
+      // marqueur externe (.sim-explosion-icon) via un transform translate3d — si on
+      // animait ce même élément, notre transform:scale écraserait ce positionnement
+      // et le 💥 sauterait dans le coin de la carte. On anime donc l'enfant.
+      const icon = L.divIcon({
+        className: 'sim-explosion-icon',
+        html: '<span class="sim-explosion-emoji">💥</span>',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+      const marker = L.marker([tank.lat, tank.lng], { icon, interactive: false }).addTo(map);
+      setTimeout(() => marker.remove(), 1900);
+    }
+  }, [engineState]);
+
   // ── Effet 5 : clic carte → outil actif ──────────────────────────────────
   useEffect(() => {
     const map = mapRef.current, geo = geoRef.current;
@@ -282,58 +353,99 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
       <div className="sim-hud">
 
         {/* ── Top-left: Stats ── */}
-        <div className="sim-stats-panel">
-          <div className="sim-stats-panel__header">
-            <span className="sim-stats-panel__title">SIMULATION EN COURS</span>
-            <span className="sim-stats-panel__timer">T+{formatHHMM(elapsedMin)}</span>
+        {!hideHud && (
+          <div className="sim-stats-panel">
+            <div className="sim-stats-panel__header">
+              <span className="sim-stats-panel__title">SIMULATION EN COURS</span>
+              <span className="sim-stats-panel__timer">T+{formatHHMM(elapsedMin)}</span>
+            </div>
+            <ul className="sim-stat-list">
+              <li><span>Surface brûlée</span><span className="val-accent">{areaBurned} km²</span></li>
+              <li><span>Foyers actifs</span><span className="val-accent">{onFire}</span></li>
+              <li><span>Direction</span><span className="val-bold">{windDir}° {degToCardinalFR(windDir)}</span></li>
+              <li><span>Température</span><span className="val-bold">{params.temperature ?? 28} °C</span></li>
+              <li>
+                <span>Humidité combus.</span>
+                <span className={fuelMoisture < 15 ? 'val-warn' : 'val-bold'}>
+                  {fuelMoisture}%
+                  {fuelMoisture < 15 && (
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4, verticalAlign: 'middle' }}>
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  )}
+                </span>
+              </li>
+            </ul>
           </div>
-          <ul className="sim-stat-list">
-            <li><span>Surface brûlée</span><span className="val-accent">{areaBurned} km²</span></li>
-            <li><span>Foyers actifs</span><span className="val-accent">{onFire}</span></li>
-            <li><span>Direction</span><span className="val-bold">{windDir}° {degToCardinalFR(windDir)}</span></li>
-            <li><span>Température</span><span className="val-bold">{params.temperature ?? 28} °C</span></li>
-            <li>
-              <span>Humidité combus.</span>
-              <span className={fuelMoisture < 15 ? 'val-warn' : 'val-bold'}>
-                {fuelMoisture}%
-                {fuelMoisture < 15 && (
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4, verticalAlign: 'middle' }}>
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                  </svg>
-                )}
-              </span>
-            </li>
-          </ul>
-        </div>
+        )}
 
         {/* ── Terrain loading indicator ── */}
-        {terrainLoading && (
+        {!hideHud && terrainLoading && (
           <div className="sim-terrain-loading">
             <span className="sim-terrain-loading__dot" />
             Chargement du terrain…
           </div>
         )}
 
-        {/* ── Top-right: Map controls ── */}
-        <div className="sim-map-controls">
-          <button className="sim-map-btn" title="Options">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-          </button>
-          <button className="sim-map-btn" onClick={() => mapRef.current?.zoomOut()} title="Zoom arrière">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-          <button className="sim-map-btn" onClick={handleFitZone} title="Recentrer sur la zone">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
-          <button className="sim-map-btn" onClick={handleDownload} title="Télécharger la carte">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
-        </div>
+        {/* ── Top-right: Map controls (toujours visibles, sauf pendant une capture) ── */}
+        {!capturing && (
+          <div className="sim-map-controls">
+            <button className="sim-map-btn" onClick={() => mapRef.current?.zoomIn()} title="Zoom avant">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button className="sim-map-btn" onClick={() => mapRef.current?.zoomOut()} title="Zoom arrière">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button
+              className="sim-map-btn"
+              onClick={() => setLayer((l) => (l === 'plan' ? 'satellite' : 'plan'))}
+              title={layer === 'satellite' ? 'Revenir au fond de carte plan' : 'Passer en vue satellite'}
+            >
+              {layer === 'satellite' ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                  <line x1="8" y1="2" x2="8" y2="18" />
+                  <line x1="16" y1="6" x2="16" y2="22" />
+                </svg>
+              )}
+            </button>
+            <button className="sim-map-btn" onClick={handleFitZone} title="Recentrer sur la zone">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+            <button
+              className="sim-map-btn"
+              onClick={() => setPanelsHidden((v) => !v)}
+              title={panelsHidden ? 'Afficher les panneaux' : 'Masquer les panneaux'}
+            >
+              {panelsHidden ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              )}
+            </button>
+            <button className="sim-map-btn" onClick={handleDownload} title="Télécharger la carte">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+          </div>
+        )}
 
         {/* ── Bottom ── */}
+        {!hideHud && (
         <div className="sim-bottom">
 
           {/* Left: Legend + home */}
@@ -429,6 +541,8 @@ export default function SimulationView({ zone, params, mapLayer, onExit }: Simul
             <span className="sim-wind__cardinal">{degToCardinalFR(windDir)}</span>
           </div>
         </div>
+        )}
+
       </div>
     </div>
   );

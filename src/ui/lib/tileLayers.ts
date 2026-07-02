@@ -6,10 +6,10 @@ import type { MapLayer } from '../types/sim';
 export const TILE_LAYERS: Record<MapLayer, { url: string; options: L.TileLayerOptions }> = {
   plan: {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    options: { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 },
+    options: { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19, noWrap: true },
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    options: { attribution: 'Tiles &copy; Esri', maxZoom: 19 },
+    options: { attribution: 'Tiles &copy; Esri', maxZoom: 19, noWrap: true },
   },
 };
