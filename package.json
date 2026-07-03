@@ -14,7 +14,7 @@
     "build:win": "npm run build:engine && npm run build:vite && electron-builder --win --x64",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p src/ui/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p renderer/ui/tsconfig.json",
     "ingest:demo": "tsx scripts/overpass-demo.ts"
   },
   "build": {
@@ -29,7 +29,7 @@
     },
     "files": [
       "electron/**/*",
-      "src/ui/dist/**/*",
+      "renderer/ui/dist/**/*",
       "engine/**/*.js",
       "engine/package.json"
     ]

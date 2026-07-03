@@ -1,6 +1,6 @@
 // Contrat de communication UI ↔ worker moteur.
 // Module de TYPES uniquement (aucune dépendance Node) : importable côté worker
-// (engine/worker.ts) comme côté renderer (src/ui, src/domain).
+// (engine/worker.ts) comme côté renderer (renderer/ui, renderer/domain).
 import { Cell, SimPhase, SimState, TerrainType, Weather } from './types'
 import { TerrainConfig } from './terrainConfig'
 

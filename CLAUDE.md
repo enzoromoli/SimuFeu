@@ -12,12 +12,12 @@ dépendances ; chaque sous-dossier a un `package.json` purement descriptif.
 ```
 electron/   Processus principal Electron = le conteneur
   main.js     Crée la BrowserWindow (contextIsolation: true, nodeIntegration: false),
-              charge src/index.html, démarre le moteur via worker_threads.Worker,
+              charge renderer/index.html, démarre le moteur via worker_threads.Worker,
               relaie les messages UI <-> moteur (ipcMain 'engine:send' / 'engine:message').
   preload.js  Expose window.engine.{ send, onMessage } via contextBridge.
 engine/     Moteur de simulation = logique isolée de l'UI
   worker.js   Node.js Worker Thread. Stub actuel (init -> ready). Future logique de sim.
-src/        Renderer = UI + orchestration
+renderer/        Renderer = UI + orchestration
   index.html, renderer.js, style.css
               Carte Leaflet, contrôles, fetch API Overpass, construction de la grille
               hexagonale. (Prévu — le renderer actuel est un stub.)

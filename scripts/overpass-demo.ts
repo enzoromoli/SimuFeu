@@ -6,10 +6,10 @@
  *   npm run ingest:demo -- 43.121 5.928 43.135 5.944
  */
 import { join } from 'node:path'
-import { ingestBounds } from '../src/app/services/overpass'
-import { FileOsmCache } from '../src/app/services/osmCache'
-import { getOverpassConfig } from '../src/app/services/overpass.config'
-import { type Bounds, TerrainType, TERRAIN_TYPES } from '../src/domain/types'
+import { ingestBounds } from '../renderer/app/services/overpass'
+import { FileOsmCache } from '../renderer/app/services/osmCache'
+import { getOverpassConfig } from '../renderer/app/services/overpass.config'
+import { type Bounds, TerrainType, TERRAIN_TYPES } from '../renderer/domain/types'
 
 // Zone par défaut : un secteur autour de Toulon (Var), zone à risque feu de forêt.
 const DEFAULT_BOUNDS: Bounds = {

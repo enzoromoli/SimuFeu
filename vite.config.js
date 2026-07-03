@@ -2,10 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
-// La couche UI (React) vit dans src/ui ; Vite y a sa racine.
-// Les couches src/domain et src/app restent importables via des chemins relatifs.
+// La couche UI (React) vit dans renderer/ui ; Vite y a sa racine.
+// Les couches renderer/domain et renderer/app restent importables via des chemins relatifs.
 export default defineConfig({
-  root: resolve(__dirname, 'src/ui'),
+  root: resolve(__dirname, 'renderer/ui'),
   base: './',
   plugins: [react()],
   resolve: {
@@ -14,7 +14,7 @@ export default defineConfig({
     extensions: ['.mts', '.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
   },
   build: {
-    outDir: resolve(__dirname, 'src/ui/dist'),
+    outDir: resolve(__dirname, 'renderer/ui/dist'),
     emptyOutDir: true,
   },
   server: {

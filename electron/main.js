@@ -25,7 +25,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     // En prod, on charge le build Vite de la couche UI.
-    mainWindow.loadFile(path.join(__dirname, '../src/ui/dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../renderer/ui/dist/index.html'));
   }
 }
 
@@ -77,7 +77,7 @@ app.on('window-all-closed', () => {
 function enableHotReload() {
   const chokidar = require('chokidar');
 
-  // Le renderer (src/ui) est rechargé par Vite (HMR) — on ne le surveille pas ici.
+  // Le renderer (renderer/ui) est rechargé par Vite (HMR) — on ne le surveille pas ici.
   // engine/ → redémarre le worker (les .js sont régénérés par `tsc`/`watch:engine`).
   chokidar.watch(path.join(__dirname, '../engine'), { ignoreInitial: true })
     .on('change', () => {
