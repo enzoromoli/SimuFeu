@@ -25,6 +25,8 @@
   --shadow-card: 0 24px 60px rgba(0, 0, 0, 0.35);
   --shadow-dropdown: 0 16px 40px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.35);
   --success: #6fe07d;
+  --sim-panel-bg: rgba(28, 43, 80, 0.90);
+  --sim-panel-border: rgba(255, 255, 255, 0.08);
 }
 
 .theme-light {
@@ -49,6 +51,8 @@
   --shadow-card: 0 20px 50px rgba(28, 37, 65, 0.12);
   --shadow-dropdown: 0 16px 40px rgba(28, 37, 65, 0.3), 0 4px 14px rgba(28, 37, 65, 0.18);
   --success: #1a6b3c;
+  --sim-panel-bg: rgba(255, 255, 255, 0.90);
+  --sim-panel-border: rgba(28, 37, 65, 0.10);
 }
 
 * {

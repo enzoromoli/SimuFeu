@@ -10,12 +10,12 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: #0c1522;
+  background: var(--bg);
 }
 
 /* Leaflet map background (overrides default grey) */
 .sim-map.leaflet-container {
-  background: #0c1522;
+  background: var(--bg);
 }
 
 /* Hide Leaflet default controls (we use our own) */
@@ -23,10 +23,44 @@
   display: none;
 }
 
-/* Terrain overlay — rendu pixel art sans lissage */
-.sim-terrain img {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: pixelated;
+/* Contour de la zone sélectionnée (pointillé) */
+.sim-zone-outline {
+  stroke: #f5921e;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  fill: none;
+}
+
+/* Emoji flamme sur les cellules en feu */
+.sim-flame-icon {
+  background: none;
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+}
+
+/* Explosion d'un tank de carburant atteint par le feu (visuel ponctuel).
+   Le positionnement (transform translate3d) est géré par Leaflet sur .sim-explosion-icon ;
+   on n'anime QUE l'emoji enfant pour ne pas écraser ce positionnement. */
+.sim-explosion-icon {
+  background: none;
+  border: none;
+}
+
+.sim-explosion-emoji {
+  display: block;
+  font-size: 36px;
+  line-height: 1;
+  text-align: center;
+  animation: sim-explode 1.8s ease-out forwards;
+}
+
+@keyframes sim-explode {
+  0%   { transform: scale(0.2); opacity: 0; }
+  20%  { transform: scale(1.4); opacity: 1; }
+  55%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1.1); opacity: 0; }
 }
 
 /* ── HUD overlay ── */
@@ -47,10 +81,10 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(28, 43, 80, 0.92);
+  background: var(--sim-panel-bg);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--sim-panel-border);
   border-radius: 14px;
   padding: 12px 20px;
   font-size: 0.8rem;
@@ -82,10 +116,10 @@
   top: 20px;
   left: 20px;
   width: 260px;
-  background: rgba(28, 43, 80, 0.88);
+  background: var(--sim-panel-bg);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--sim-panel-border);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -95,7 +129,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--sim-panel-border);
 }
 
 .sim-stats-panel__title {
@@ -164,10 +198,10 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: rgba(28, 43, 80, 0.90);
+  background: var(--sim-panel-bg);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--sim-panel-border);
   color: var(--text);
   display: flex;
   align-items: center;
@@ -211,10 +245,10 @@
 
 /* Legend */
 .sim-legend {
-  background: rgba(28, 43, 80, 0.88);
+  background: var(--sim-panel-bg);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--sim-panel-border);
   border-radius: 14px;
   padding: 12px 16px;
   display: flex;
@@ -235,7 +269,7 @@
 }
 
 .sim-legend::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--surface-strong);
   border-radius: 999px;
 }
 
@@ -304,10 +338,10 @@
 }
 
 .sim-bar {
-  background: rgba(28, 43, 80, 0.90);
+  background: var(--sim-panel-bg);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--sim-panel-border);
   border-radius: 18px;
   display: flex;
   flex-direction: column;
@@ -357,7 +391,7 @@
   position: relative;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.10);
+  background: var(--surface-hover);
   cursor: pointer;
 }
 
@@ -392,8 +426,8 @@
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--text);
   display: flex;
   align-items: center;
@@ -404,20 +438,20 @@
 }
 
 .sim-ctl:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-hover);
 }
 
 .sim-ctl--play {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--surface-3);
+  border-color: var(--surface-hover);
   margin: 0 2px;
 }
 
 .sim-ctl--play:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--surface-strong);
 }
 
 .sim-speeds {
@@ -429,8 +463,8 @@
 .sim-speed {
   padding: 6px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 700;
@@ -469,7 +503,7 @@
 }
 
 .sim-tool:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -489,7 +523,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-2);
   transition: background 0.15s, color 0.15s;
 }
 
@@ -508,10 +542,10 @@
 .sim-wind {
   flex-shrink: 0;
   width: 110px;
-  background: rgba(28, 43, 80, 0.90);
+  background: var(--sim-panel-bg);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--sim-panel-border);
   border-radius: 16px;
   padding: 14px 12px 16px;
   display: flex;
@@ -532,8 +566,8 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(14, 22, 48, 0.80);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: var(--surface-strong);
+  border: 1px solid var(--sim-panel-border);
   display: flex;
   align-items: center;
   justify-content: center;

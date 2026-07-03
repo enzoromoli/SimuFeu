@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Modal from './Modal';
 import type { MapLayer, Zone } from '../types/sim';
+import { TILE_LAYERS } from '../lib/tileLayers';
 import './MapPanel.css';
 
 interface NominatimResult {
@@ -12,17 +13,6 @@ interface NominatimResult {
   address?: Record<string, string>;
   boundingbox: [string, string, string, string];
 }
-
-const TILE_LAYERS = {
-  plan: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    options: { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 },
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    options: { attribution: 'Tiles &copy; Esri', maxZoom: 19 },
-  },
-};
 
 const DEFAULT_CENTER: [number, number] = [46.8, 2.5];
 const DEFAULT_ZOOM = 6;
@@ -84,6 +74,9 @@ export default function MapPanel({ mapLayer, onLayerChange, zone, onZoneChange }
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       attributionControl: false,
+      minZoom: 3,
+      maxBounds: L.latLngBounds([-85, -180], [85, 180]),
+      maxBoundsViscosity: 1.0,
     });
     mapRef.current = map;
 

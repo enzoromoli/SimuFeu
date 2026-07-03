@@ -83,7 +83,7 @@ export default function App() {
   if (view === 'simulation') {
     return (
       <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}`}>
-        <SimulationView zone={zone} params={params} onExit={() => setView('setup')} />
+        <SimulationView zone={zone} params={params} mapLayer={mapLayer} onExit={() => setView('setup')} />
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function App() {
     <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}`}>
       <main className="selection-card">
         <div className="selection-card__toolbar">
-          <span className="brand">Pyro <span style={{ color: 'var(--accent)' }}>Pilot</span></span>
+          <span className="brand">Pyro <span style={{ color: 'var(--accent)' }}>Pilote</span></span>
           <div className="toolbar-actions">
             <button
               type="button"

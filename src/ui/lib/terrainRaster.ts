@@ -5,7 +5,7 @@
 // du MÊME raster — on échantillonne la couleur du pixel au centroïde de chaque cellule.
 import { TerrainType } from '../../../engine/types';
 import { TerrainPatch } from '../../../engine/protocol';
-import { makeGrid } from '../../../engine/hexUtils';
+import { makeGrid } from '../../../engine/gridUtils';
 import { cellToLatLng, GridGeo } from '../../domain/geoGrid';
 import { Bounds } from '../../domain/types';
 
@@ -270,7 +270,7 @@ export function sampleGridTerrain(raster: TerrainRaster, geo: GridGeo): TerrainP
   const { north, south, east, west } = raster.bounds;
   const { width, height, data } = raster;
   const patches: TerrainPatch[] = [];
-  for (const cell of makeGrid(geo.radius).values()) {
+  for (const cell of makeGrid(geo.radiusX, geo.radiusY).values()) {
     const { lat, lng } = cellToLatLng(geo, cell.q, cell.r);
     let px = Math.floor(((lng - west) / (east - west)) * width);
     let py = Math.floor(((north - lat) / (north - south)) * height);

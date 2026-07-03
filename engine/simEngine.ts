@@ -1,6 +1,6 @@
 import { CellState, TerrainType, Cell, SimState, Weather } from './types'
 import { TERRAIN_CONFIG, PRESSURE_COEFF, NEIGHBOR_FIRE_WEIGHT } from './terrainConfig'
-import { getNeighbors, hexDirectionDeg } from './hexUtils'
+import { getNeighbors, hexDirectionDeg } from './gridUtils'
 import { weatherIgnitionFactor, effectiveBurnDuration, windNeighborFactor } from './weather'
 
 function clamp(v: number, min: number, max: number): number {

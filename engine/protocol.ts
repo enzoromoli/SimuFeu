@@ -12,14 +12,14 @@ export interface TerrainPatch {
 
 /** Messages reçus par le worker (UI → moteur). */
 export type WorkerInMsg =
-  | { type: 'init';        radius?: number; seed?: number }
+  | { type: 'init';        radiusX?: number; radiusY?: number; seed?: number }
   | { type: 'navigate';    direction: 'forward' | 'backward' | 'jump'; tick?: number }
   | { type: 'ignite';      id: string }
   | { type: 'paint';       id: string; terrain: TerrainType }
   | { type: 'loadTerrain'; cells: TerrainPatch[] }
   | { type: 'setWeather';  weather: Weather }
   | { type: 'setPhase';    phase: SimState['phase'] }
-  | { type: 'reset';       radius?: number; seed?: number }
+  | { type: 'reset';       radiusX?: number; radiusY?: number; seed?: number }
 
 /** État complet d'un tick, sérialisé pour le renderer. */
 export interface StateMsg {

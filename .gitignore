@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 .env.local
+.claude/
 .cache/
 
 # Artefacts de compilation TypeScript
